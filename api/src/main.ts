@@ -3,9 +3,9 @@ import cors from 'cors';
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
 // import { apiReference } from "@scalar/express-api-reference";
-import verifyIgn from './routes/verify-ign';
-import { auth } from '@lib';
-import { DOMAIN, PROD } from '@config';
+import { verifyIgn } from './routes/index';
+import { auth } from './lib/auth';
+import { DOMAIN, PROD } from './config/index';
 
 const app = express();
 const port = 8000;

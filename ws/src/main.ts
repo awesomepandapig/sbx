@@ -1,55 +1,51 @@
-import { WebSocketServer } from 'ws';
-import * as jose from 'jose';
+import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'crypto';
+import { authenticate } from './lib/middleware';
 
-const JWKS = jose.createRemoteJWKSet(
-  new URL('http://localhost:8000/api/auth/jwks'),
-);
+interface AuthenticatedWebSocket extends WebSocket {
+  authenticated?: boolean;
+}
 
+const connections = new Map<string, AuthenticatedWebSocket>();
 const PORT = 8080;
-const connections: Record<string, WebSocket> = {};
-
 const wss = new WebSocketServer({ port: PORT });
-console.log(`Server started on ${PORT}`);
+
+const handleMessage = async (ws: WebSocket, bytes: Buffer, uuid: string) => {
+  const message = JSON.parse(bytes.toString());
+  const connection = connections.get(uuid);
+
+  if (!connection) {
+    console.log('Connection not found');
+    return;
+  }
+
+  if (message.type === 'authenticate') {
+    const isAuthenticated = await authenticate(message.token);
+    connection.authenticated = isAuthenticated;
+    return;
+  }
+
+  if (connection.authenticated) {
+    //  TODO: (add message handlers)
+    ws.send("authenticated!");
+  } else {
+    // close connection
+  }
+};
 
 wss.on('connection', function connection(ws) {
   const uuid = randomUUID();
-  connections[uuid] = ws;
+  connections.set(uuid, ws as AuthenticatedWebSocket);
 
   ws.on('error', console.error);
 
-  ws.on('message', async function message(data) {
-    console.log('received: %s', data);
-
-    try {
-      // Parse the incoming message
-      const message = JSON.parse(data.toString());
-
-      if (message.type === 'authenticate' && message.token) {
-        // Extract the token from the authenticate message
-        const token = message.token;
-
-        // Verify the JWT using the JWKS
-        const { payload } = await jose.jwtVerify(token, JWKS, {
-          issuer: 'http://localhost:8000',
-        });
-
-        console.log('JWT verified, payload:', payload);
-
-        // Respond to the client with the authentication status
-        ws.send(JSON.stringify({ type: 'authenticated', payload }));
-      } else {
-        ws.send(
-          JSON.stringify({
-            type: 'error',
-            message: 'Invalid message or token missing',
-          }),
-        );
-      }
-    } catch (error) {
-      console.error(error);
-    }
+  ws.on('message', async function message(data: Buffer) {
+    await handleMessage(ws, data, uuid);
   });
 
-  ws.send('something');
+  ws.on('close', function close() {
+    connections.delete(uuid);
+  });
 });
+
+console.log(`WebSocket server started on ${PORT}`);

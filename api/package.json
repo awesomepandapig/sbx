@@ -4,10 +4,10 @@
   "main": "main.ts",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/main.ts",
-    "start": "NODE_ENV=production node dist/src/main.js",
+    "start": "NODE_ENV=production node dist/main.js",
     "lint": "eslint .",
     "fmt": "NODE_OPTIONS='--experimental-strip-types' prettier . --write",
-    "build": "npm run lint && npm run fmt && tsc"
+    "build": "npm run lint && npm run fmt && tsc && tsc-alias"
   },
   "type": "module",
   "keywords": [],
@@ -34,6 +34,7 @@
     "eslint": "^9.22.0",
     "jiti": "^2.1.2",
     "prettier": "3.5.3",
+    "tsc-alias": "^1.8.11",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1"

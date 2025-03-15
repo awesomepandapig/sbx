@@ -2,8 +2,9 @@ import express, { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { createSelectSchema } from 'drizzle-zod';
-import { db, user } from '@db';
-import { authenticate } from '@lib';
+import { db } from '../db/index';
+import { user } from '../db/schema';
+import { authenticate } from '../lib/middleware';
 import 'dotenv/config';
 
 if (!process.env.HYPIXEL_API_KEY) {
