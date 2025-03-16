@@ -1,22 +1,22 @@
 import * as jose from 'jose';
 
-const JWKS = jose.createRemoteJWKSet(
-  new URL('http://localhost:8000/api/auth/jwks'),
-);
+const JWKS_URL = 'http://localhost:8000/api/auth/jwks';
+const ISSUER = 'http://localhost:8000';
+const JWKS = jose.createRemoteJWKSet(new URL(JWKS_URL));
 
-export const authenticate = async (token: string): Promise<boolean> => {
+export const authenticate = async (
+  token: string,
+): Promise<{ authenticated: boolean; user_id?: string }> => {
   if (!token) {
-    return false; // Unauthorized
+    return { authenticated: false };
   }
   try {
     const { payload } = await jose.jwtVerify(token, JWKS, {
-      issuer: 'http://localhost:8000',
+      issuer: ISSUER,
     });
-    // TODO: change behavior
-    console.log(payload);
-    return true; // Authenticated
+    return { authenticated: true, user_id: payload.sub };
   } catch (error) {
     console.log(error);
-    return false; // Forbidden
+    return { authenticated: false };
   }
 };

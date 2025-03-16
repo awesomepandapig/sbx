@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://skyblock.exchange/order.schema.json",
+  "title": "Order",
+  "description": "A product in the catalog",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "product_id": {
+      "$ref": "https://skyblock.exchange/product.schema.json"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "side": {
+      "type": "string",
+      "enum": ["buy", "sell"]
+    },
+    "type": {
+      "type": "string",
+      "enum": ["market", "limit"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "executed_value": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["received", "open", "done"]
+    },
+    "settled": {
+      "type": "boolean"
+    },
+    "price": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  },
+  "required": [
+    "id",
+    "product_id",
+    "user_id",
+    "side",
+    "type",
+    "created_at",
+    "executed_value",
+    "status",
+    "settled"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "type": { "enum": ["limit"] }
+      },
+      "required": ["price"]
+    },
+    {
+      "properties": {
+        "type": { "enum": ["market"] }
+      },
+      "not": {
+        "required": ["price"]
+      }
+    }
+  ]
+}

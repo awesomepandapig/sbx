@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { ajv } from '../config/index';
 import { createSelectSchema } from 'drizzle-zod';
 import { db } from '../db/index';
 import { user } from '../db/schema';
@@ -12,15 +12,26 @@ if (!process.env.HYPIXEL_API_KEY) {
 }
 
 const userSelectSchema = createSelectSchema(user);
-const ignSchema = z.string().min(3).max(16);
-const minecraftIdSchema = z
-  .string()
-  .length(32)
-  .regex(/^[0-9a-fA-F]{32}$/);
+
+const ignSchema = {
+  type: 'string',
+  minLength: 3,
+  maxLength: 16,
+};
+
+const minecraftIdSchema = {
+  type: 'string',
+  pattern: '^[0-9a-fA-F]{32}$',
+  minLength: 32,
+  maxLength: 32,
+};
+
+const validateIgn = ajv.compile(ignSchema);
+const validateMinecraftId = ajv.compile(minecraftIdSchema);
 
 const router = express.Router();
 
-async function getMinecraftUUID(ign: string): Promise<string> {
+async function getMinecraftId(ign: string): Promise<string> {
   try {
     const url = `https://api.mojang.com/users/profiles/minecraft/${ign}`;
     const response = await fetch(url);
@@ -28,7 +39,12 @@ async function getMinecraftUUID(ign: string): Promise<string> {
       throw new Error('Invalid IGN or API request failed.');
     }
     const data = await response.json();
-    return minecraftIdSchema.parse(data.id);
+    const isValidMinecraftId = validateMinecraftId(data.id);
+    if (isValidMinecraftId) {
+      return data.id;
+    } else {
+      throw new Error('API request failed.');
+    }
   } catch (error) {
     console.error('Error fetching Minecraft UUID:', error);
     throw new Error('Failed to fetch Minecraft UUID.');
@@ -59,8 +75,14 @@ async function getHypixelDiscord(uuid: string): Promise<string | null> {
 router.get('/:ign', authenticate, async (req: Request, res: Response) => {
   try {
     const session = res.locals.session;
-    const ign = ignSchema.parse(req.params.ign);
-    const minecraftId = await getMinecraftUUID(ign);
+    let ign;
+    const isValidIgn = validateIgn(req.params.ign);
+    if (isValidIgn) {
+      ign = req.params.ign;
+    } else {
+      throw new Error('IGN invalid');
+    }
+    const minecraftId = await getMinecraftId(ign);
     const hypixelDiscordId = await getHypixelDiscord(minecraftId);
     const verified = session.user.name === hypixelDiscordId;
     if (!verified) {

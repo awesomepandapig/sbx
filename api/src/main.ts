@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
 // import { apiReference } from "@scalar/express-api-reference";
-import { verifyIgn } from './routes/index';
+import { verifyIgn, orderRoutes } from './routes/index';
 import { auth } from './lib/auth';
 import { DOMAIN, PROD } from './config/index';
 
@@ -40,6 +40,7 @@ app.get('/api/openapi', (_req, res) => {
 
 app.use('/api/auth/verify-ign', express.json(), verifyIgn);
 app.all('/api/auth/*', toNodeHandler(auth));
+app.use('/api/orders', express.json(), orderRoutes);
 
 app.listen(port, () => {
   console.log(`Server started on ${port}`);
