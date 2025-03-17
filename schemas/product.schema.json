@@ -6,7 +6,8 @@
     "type": "string",
     "enum": [
         "VANGUARD",
-        "GOLDEN_DRAGON"
+        "GOLDEN_DRAGON",
+        "PIZZA"
     ]
 }
   

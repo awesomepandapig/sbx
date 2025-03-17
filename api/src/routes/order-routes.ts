@@ -1,24 +1,9 @@
-import express, { NextFunction, Request, Response } from 'express';
-import { validateOrder } from '../models/index';
-import { authenticate } from '../lib/middleware';
+import express, { Request, Response } from 'express';
+import { validateOrderRequest } from '../models/index';
+import { authenticate, validate } from '../lib/index';
+import { Order } from 'entities/index';
 
 const router = express.Router();
-
-const validateBody = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  const valid = validateOrder(req.body);
-  if (!valid) {
-    res.status(400).json({
-      message: 'Invalid data',
-      errors: validateOrder.errors,
-    });
-    return;
-  }
-  next();
-};
 
 // // List fills
 // router.get('/fills', authenticate, async (req: Request, res: Response) => {
@@ -42,10 +27,16 @@ const validateBody = async (
 router.post(
   '/',
   authenticate,
-  validateBody,
+  validate(validateOrderRequest),
   async (req: Request, res: Response) => {
     try {
-      res.status(201).send('Order created');
+      const user_id = res.locals.session.user.id;
+      console.log(user_id);
+
+      const order = new Order({ ...req.body, user_id });
+      console.log(order);
+
+      res.status(201).json('Order created');
     } catch (error) {
       console.log(error);
     }

@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://skyblock.exchange/order-request.schema.json",
+    "title": "Order",
+    "description": "A product in the catalog",
+    "type": "object",
+    "properties": {
+      "product_id": {
+        "$ref": "https://skyblock.exchange/product.schema.json"
+      },
+      "side": {
+        "type": "string",
+        "enum": ["buy", "sell"]
+      },
+      "type": {
+        "type": "string",
+        "enum": ["market", "limit"]
+      },
+      "price": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": [
+      "product_id",
+      "side",
+      "type"
+    ],
+    "additionalProperties": false,
+    "oneOf": [
+      {
+        "properties": {
+          "type": { "enum": ["limit"] }
+        },
+        "required": ["price"]
+      },
+      {
+        "properties": {
+          "type": { "enum": ["market"] }
+        },
+        "not": {
+          "required": ["price"]
+        }
+      }
+    ]
+  }  

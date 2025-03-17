@@ -43,16 +43,11 @@
     }
   },
   "required": [
-    "id",
     "product_id",
-    "user_id",
     "side",
-    "type",
-    "created_at",
-    "executed_value",
-    "status",
-    "settled"
+    "type"
   ],
+  "additionalProperties": false,
   "oneOf": [
     {
       "properties": {
