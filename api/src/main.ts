@@ -1,6 +1,6 @@
 import path from 'path';
 import cors from 'cors';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { toNodeHandler } from 'better-auth/node';
 // import { apiReference } from "@scalar/express-api-reference";
 import { verifyIgn, orderRoutes } from './routes/index';
@@ -38,8 +38,19 @@ app.get('/api/openapi', (_req, res) => {
 //   })
 // );
 
-app.use('/api/auth/verify-ign', express.json(), verifyIgn);
 app.all('/api/auth/*', toNodeHandler(auth));
+
+app.use(express.json())
+
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError) {
+    res.status(400).json({ error: "Invalid JSON" });
+    return;
+  }
+  next(err);
+});
+
+app.use('/api/auth/verify-ign', express.json(), verifyIgn);
 app.use('/api/orders', express.json(), orderRoutes);
 
 app.listen(port, () => {

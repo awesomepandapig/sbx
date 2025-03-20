@@ -1,0 +1,15 @@
+/home/theaw/sbx/me/target/debug/deps/libzerocopy-9a2912bb2fae3461.rmeta: /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/lib.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macros.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macro_util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/post_monomorphization_compile_fail_tests.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/third_party/rust/layout.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/wrappers.rs
+
+/home/theaw/sbx/me/target/debug/deps/libzerocopy-9a2912bb2fae3461.rlib: /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/lib.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macros.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macro_util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/post_monomorphization_compile_fail_tests.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/third_party/rust/layout.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/wrappers.rs
+
+/home/theaw/sbx/me/target/debug/deps/zerocopy-9a2912bb2fae3461.d: /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/lib.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macros.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macro_util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/post_monomorphization_compile_fail_tests.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/util.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/third_party/rust/layout.rs /home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/wrappers.rs
+
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/lib.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macros.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/macro_util.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/post_monomorphization_compile_fail_tests.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/util.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/third_party/rust/layout.rs:
+/home/theaw/.cargo/registry/src/index.crates.io-6f17d22bba15001f/zerocopy-0.7.35/src/wrappers.rs:
+
+# env-dep:CARGO_PKG_VERSION=0.7.35

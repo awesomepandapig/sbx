@@ -1,29 +1,21 @@
 import { db } from '../db/index';
-import { product } from '../db/index';
-import { FromSchema } from 'json-schema-to-ts';
+import { product } from '../db/schema';
+import { z } from 'zod';
 
-const productSchemaTemplate = {
-  $schema: 'http://json-schema.org/draft-07/schema',
-  $id: 'https://skyblock.exchange/product.schema.json',
-  title: 'Order',
-  description: 'A product in the catalog',
-  type: 'string',
-  enum: [''] as string[],
-} as const;
+export const productSchema = z.object({
+  id: z.string(),
+});
 
-let productSchema = productSchemaTemplate;
+type Product = z.infer<typeof productSchema>;
 
-async function updateSchema() {
+export async function getProducts(): Promise<Product[]> {
   const products = await db.select().from(product);
-  productSchema = {
-    ...productSchemaTemplate,
-    enum: products.map((product) => product.name),
-  };
+  return products.map((product) => ({
+    id: product.id,
+  }));
 }
 
-// Cache the schema for 30 minutes and then refetch
-setInterval(updateSchema, 30 * 60 * 1000);
-
-updateSchema();
-export { productSchema };
-export type Product = FromSchema<typeof productSchema>;
+export async function validateProduct(product_id: string): Promise<boolean> {
+  const products = await getProducts();
+  return products.some((product) => product.id === product_id);
+}

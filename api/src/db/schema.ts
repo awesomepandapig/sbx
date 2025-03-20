@@ -1,8 +1,7 @@
-import { pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const product = pgTable('product', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull().unique(),
+  id: text('id').primaryKey().notNull().unique(),
 });
 
 export const user = pgTable('user', {
