@@ -1,24 +1,30 @@
 import { randomUUID, UUID } from 'crypto';
-import { z } from "zod";
+import { z } from 'zod';
 
-export const OrderSchema = z.object({
-  product_id: z.string(),
-  side: z.enum(["buy", "sell"]),
-  type: z.enum(["market", "limit"]),
-  price: z.number().int().gt(0).optional(),
-  size: z.number().int().gt(0),
-}).refine((data) => {
-  if (data.type === "limit" && data.price === undefined) {
-    return false;
-  }
-  if (data.type === "market" && data.price !== undefined) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Price must be defined for limit orders and omitted for market orders",
-  path: ["price"],
-});
+export const OrderSchema = z
+  .object({
+    product_id: z.string(),
+    side: z.enum(['buy', 'sell']),
+    type: z.enum(['market', 'limit']),
+    price: z.number().int().gt(0).optional(),
+    size: z.number().int().gt(0),
+  })
+  .refine(
+    (data) => {
+      if (data.type === 'limit' && data.price === undefined) {
+        return false;
+      }
+      if (data.type === 'market' && data.price !== undefined) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'Price must be defined for limit orders and omitted for market orders',
+      path: ['price'],
+    },
+  );
 
 export class Order {
   id: UUID;

@@ -14,8 +14,8 @@ app.use(
   cors({
     origin: PROD
       ? [`https://${DOMAIN}`, `https://api.${DOMAIN}`]
-      : ['http://localhost'],
-    methods: ['GET', 'POST'],
+      : ['http://localhost:3000'],
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true,
   }),
 );
@@ -38,19 +38,18 @@ app.get('/api/openapi', (_req, res) => {
 //   })
 // );
 
-app.all('/api/auth/*', toNodeHandler(auth));
-
-app.use(express.json())
+app.use(express.json());
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof SyntaxError) {
-    res.status(400).json({ error: "Invalid JSON" });
+    res.status(400).json({ error: 'Invalid JSON' });
     return;
   }
   next(err);
 });
 
 app.use('/api/auth/verify-ign', express.json(), verifyIgn);
+app.all('/api/auth/*', toNodeHandler(auth));
 app.use('/api/orders', express.json(), orderRoutes);
 
 app.listen(port, () => {

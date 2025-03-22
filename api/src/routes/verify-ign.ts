@@ -13,7 +13,10 @@ if (!process.env.HYPIXEL_API_KEY) {
 
 const userSelectSchema = createSelectSchema(user);
 
-const ignSchema = z.string().min(3).max(16);
+const ignSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-zA-Z0-9_]{3,16}$/);
 const minecraftIdSchema = z
   .string()
   .regex(/^[0-9a-fA-F]{32}$/, 'Invalid Minecraft ID')
@@ -52,15 +55,18 @@ async function getHypixelDiscord(uuid: string): Promise<string | null> {
         'API-Key': process.env.HYPIXEL_API_KEY as string,
       },
     });
-
     if (!response.ok) {
       throw new Error('Failed to fetch Hypixel player data.');
     }
 
     const data = await response.json();
-    return data.player?.socialMedia?.links?.DISCORD || null;
+    if (!data.player?.socialMedia?.links?.DISCORD) {
+      throw new Error('Hypixel account is not linked to a Discord account.');
+    }
+
+    return data.player.socialMedia.links.DISCORD;
   } catch (error) {
-    throw new Error(`Failed to fetch Hypixel Discord: ${error}`);
+    throw new Error(`Failed to fetch Hypixel Discord: ${error}`); // TODO: CHANGE ERROR BEHAVIOR
   }
 }
 
@@ -70,8 +76,20 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const session = res.locals.session;
     ignSchema.parse(req.body.ign);
     const ign = req.body.ign;
+
     const minecraftId = await getMinecraftId(ign);
+
     const hypixelDiscordId = await getHypixelDiscord(minecraftId);
+    if (!hypixelDiscordId) {
+      res
+        .status(400)
+        .json({
+          error:
+            'Your Hypixel account is not linked to a Discord account. Please link it and try again.',
+        });
+      return;
+    }
+
     const verified = session.user.name === hypixelDiscordId;
     if (!verified) {
       res.status(403).json({ error: 'IGN verification failed' });

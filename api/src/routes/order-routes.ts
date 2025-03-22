@@ -70,7 +70,11 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     // Add the message to the message stream
     const streamId = `${Date.now()}-${sequence_num}`;
-    await redisClient.xAdd(`${order.product_id}:new`, streamId, orderStringified);
+    await redisClient.xAdd(
+      `${order.product_id}:new`,
+      streamId,
+      orderStringified,
+    );
     sequence_num++;
 
     // Cache the message in Redis for O(1) metadata lookups
@@ -83,7 +87,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     // TODO: Handle
     console.log(error);
-    res.status(400).json({"message": "bad request"})
+    res.status(400).json({ message: 'bad request' });
   }
 });
 
