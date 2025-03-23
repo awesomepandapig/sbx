@@ -85,7 +85,7 @@ const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`${width} h-96 bg-[#141414] border border-[rgba(38,38,38,.7)] rounded-xl p-8 flex flex-col`}
+      className={`${width}  h-96 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] rounded-xl p-8 flex flex-col`}
     >
       {/* Center the children content vertically */}
       <div className="flex-grow flex items-center justify-center text-gray-500">
@@ -317,7 +317,7 @@ const Section2: FC = () => {
 
 export default function Home() {
   return (
-    <div className="">
+    <div className="bg-[#030105]">
       <nav
         className="flex justify-between items-center p-4 bg-[rgba(20, 20, 20, 0.5)] border-b border-[rgba(38,38,38,.7)] backdrop-blur-lg sticky top-0 w-full"
         style={{
