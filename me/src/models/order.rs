@@ -8,7 +8,7 @@ pub struct Order {
     pub user_id: String,
     pub side: String,
     pub r#type: String,
-    pub created_at: String,
+    pub created_at: i64,
     pub executed_value: i64,
     pub status: String,
     pub settled: bool,
@@ -62,7 +62,7 @@ impl Order {
         fields.push(("user_id", self.user_id.clone()));
         fields.push(("side", self.side.clone()));
         fields.push(("type", self.r#type.clone()));
-        fields.push(("created_at", self.created_at.clone()));
+        fields.push(("created_at", self.created_at.to_string()));
         fields.push(("status", self.status.clone()));
         fields.push(("executed_value", self.executed_value.to_string()));
         fields.push(("settled", self.settled.to_string()));

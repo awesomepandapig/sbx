@@ -81,12 +81,10 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     const hypixelDiscordId = await getHypixelDiscord(minecraftId);
     if (!hypixelDiscordId) {
-      res
-        .status(400)
-        .json({
-          error:
-            'Your Hypixel account is not linked to a Discord account. Please link it and try again.',
-        });
+      res.status(400).json({
+        error:
+          'Your Hypixel account is not linked to a Discord account. Please link it and try again.',
+      });
       return;
     }
 

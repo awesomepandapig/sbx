@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { authenticate } from '../lib/middleware';
 import { validateProduct } from '../models/product';
-import { Order, OrderSchema } from 'models/order';
+import { Order, OrderSchema, OrderResponse } from 'models/order';
 import { z } from 'zod';
 import { redisClient } from '../config/index';
 
@@ -82,8 +82,14 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     // Cache the message id for O(1) Per-User Order Retrieval
     await redisClient.sAdd(`user_orders:${order.user_id}`, order.id);
-
-    res.status(201).json(order);
+    
+    // Return the response
+    const orderResponse: OrderResponse = {
+        ...order,
+        created_at: new Date(order.created_at * 1000).toISOString(), // Convert timestamp to ISO
+    };
+  
+    res.status(201).json(orderResponse);
   } catch (error) {
     // TODO: Handle
     console.log(error);
@@ -98,7 +104,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
     const userId = res.locals.session.user.id;
 
     const orderKey = `orders:${orderId}`;
-    const order = await redisClient.hGetAll(orderKey);
+    let order = await redisClient.hGetAll(orderKey);
 
     if (!order || Object.keys(order).length === 0) {
       res.status(404).json({ message: 'Order not found or expired' });
@@ -110,6 +116,8 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       return;
     }
 
+    // Convert UNIX timestamp to human readable format
+    order.created_at = new Date(order.created_at).toISOString();
     res.status(200).json({ order });
   } catch (error) {
     // TODO: if error is zod error 400

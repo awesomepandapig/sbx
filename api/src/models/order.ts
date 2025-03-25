@@ -32,7 +32,7 @@ export class Order {
   user_id: string;
   side: 'buy' | 'sell';
   type: 'market' | 'limit';
-  created_at: string;
+  created_at: number;
   executed_value: number;
   status: 'received' | 'open' | 'done';
   settled: boolean;
@@ -53,7 +53,7 @@ export class Order {
     this.user_id = data.user_id;
     this.side = data.side;
     this.type = data.type;
-    this.created_at = new Date().toISOString();
+    this.created_at = Math.floor(Date.now() / 1000);
     this.executed_value = 0;
     this.status = 'received';
     this.settled = false;
@@ -72,7 +72,7 @@ export class Order {
       user_id: this.user_id,
       side: this.side.toString(),
       type: this.type.toString(),
-      created_at: this.created_at,
+      created_at: this.created_at.toString(),
       executed_value: this.executed_value.toString(),
       status: this.status.toString(),
       settled: this.settled.toString(),
@@ -90,3 +90,17 @@ export class Order {
     return json;
   }
 }
+
+export type OrderResponse = {
+  id: UUID;
+  product_id: string;
+  side: 'buy' | 'sell';
+  type: 'market' | 'limit';
+  created_at: string;
+  executed_value: number;
+  status: 'received' | 'open' | 'done';
+  settled: boolean;
+  price?: number;
+  cancel_after?: string;
+  size: number;
+};

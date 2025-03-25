@@ -15,8 +15,9 @@ fn read_orders_from_stream(
     product_id: &str,
     orders: &mut Vec<Order>,
 ) {
-    let opts = StreamReadOptions::default().count(BATCH_SIZE);
-    let stream_name = format!("{}:new", product_id);
+    let opts: StreamReadOptions =
+        StreamReadOptions::default().count(BATCH_SIZE);
+    let stream_name: String = format!("{}:new", product_id);
     let results: RedisResult<StreamReadReply> =
         con.xread_options(&[stream_name], &[&stream_id], &opts);
 
@@ -26,9 +27,7 @@ fn read_orders_from_stream(
         return;
     }
 
-    // TODO: make more efficient by removing
-    let reply = results.unwrap();
-
+    let reply: StreamReadReply = results.unwrap();
     for stream in reply.keys.iter() {
         for entry in stream.ids.iter() {
             // Update the stream_id to the latest seen ID
@@ -45,8 +44,12 @@ fn read_orders_from_stream(
     }
 }
 
-fn cancel_immediate(order: &Order) {
-    // lookup order in buy/sell data structure based on order side
+fn cancel_immediate(
+    order: &Order,
+    bid_pq: &mut PriorityQueue<Order, i64>,
+    ask_pq: &mut PriorityQueue<Order, Reverse<i64>>,
+) {
+    // lookup order in buy/sell data structure based on order.side
     // if the order EXISTS in the data structure
     // delete the order from the DS
     // create new message for success response
@@ -63,34 +66,59 @@ fn match_orders(
     bid_pq: &mut PriorityQueue<Order, i64>,
     ask_pq: &mut PriorityQueue<Order, Reverse<i64>>,
 ) -> Vec<Order> {
-    let mut matches = Vec::<Order>::new();
+    let mut matches: Vec<Order> = Vec::new();
 
-    // TODO: Implement matching algorithm
+    while let (Some((highest_bid, _)), Some((lowest_ask, _))) =
+        (bid_pq.peek(), ask_pq.peek())
+    {
+        if highest_bid.price < lowest_ask.price {
+            // No match possible
+            break;
+        }
 
-    // Self-Trade Prevention Two orders from the same user are not allowed to match with one another.
+        // TODO: Prevent self-trade
+        // if bid_order.user_id == ask_order.user_id {
+        //     //cancel_immediate(ask_order, bid_pq, ask_pq);
+        //     continue;
+        // }
 
-    while let Some((order, price)) = bid_pq.pop() {
-        matches.push(order);
+        // Match found, pop orders from queues
+        let mut bid: Order = bid_pq.pop().unwrap().0;
+        let mut ask: Order = ask_pq.pop().unwrap().0;
+
+        // Update order execution details
+        bid.status = "done".to_string();
+        ask.status = "done".to_string();
+        bid.executed_value = bid.price.unwrap();
+        ask.executed_value = bid.price.unwrap();
+        bid.settled = true;
+        ask.settled = true;
+
+        // TODO: Add cross-reference to matched orders
+        //bid.matched_order_id = Some(ask.id);
+        //ask.matched_order_id = Some(bid.id);
+
+        // Store matched orders
+        matches.push(bid.clone());
+        matches.push(ask.clone());
     }
-
-    // for each match update status, executed_value, and settled boolean (?)
-
     return matches;
 }
 
 fn matching_engine(product_id: &str) {
-    let mut stream_id = String::from("0-0");
+    let mut stream_id: String = String::from("0-0");
     let mut bid_pq: PriorityQueue<Order, i64> = PriorityQueue::new();
     let mut ask_pq: PriorityQueue<Order, Reverse<i64>> = PriorityQueue::new();
 
     // Create redis connection
-    let client = redis::Client::open("redis://127.0.0.1/0").unwrap();
-    let mut con = client.get_connection().unwrap();
+    let client: redis::Client =
+        redis::Client::open("redis://localhost/0").unwrap();
+    let mut con: Connection = client.get_connection().unwrap();
 
     let mut i = 0; // TODO: REMOVE
     while i < 2 {
         // Read new orders from stream
-        let mut orders = Vec::new();
+        let mut orders: Vec<Order> = Vec::new();
         read_orders_from_stream(
             &mut con,
             &mut stream_id,
@@ -98,14 +126,22 @@ fn matching_engine(product_id: &str) {
             &mut orders,
         );
         for order in orders {
+            // TODO: we should spawn 3 seperate orders for a sized limit order
             // Enqueue limit orders into the order book queues
             if order.r#type == "limit" {
                 if order.side == "buy" {
-                    bid_pq.push(order.clone(), order.price.unwrap());
+                    bid_pq.push(
+                        order.clone(),
+                        (order.price.unwrap() + order.created_at),
+                    );
                 } else {
-                    ask_pq.push(order.clone(), Reverse(order.price.unwrap()));
+                    ask_pq.push(
+                        order.clone(),
+                        Reverse(order.price.unwrap() + order.created_at),
+                    );
                 }
             }
+
             // Handle IOC (market orders are not placed in book)
 
             // if order type is cancel
@@ -115,13 +151,12 @@ fn matching_engine(product_id: &str) {
             // cancel_after(&order);
 
             // Run matching algorithm
-            let matches = match_orders(&mut bid_pq, &mut ask_pq);
-
-            // Send each match to redis output stream
+            let matches: Vec<Order> = match_orders(&mut bid_pq, &mut ask_pq);
             for matched_order in matches {
                 // Add to Redis stream
-                let redis_tuples = matched_order.to_redis_tuples();
-                let stream_name = format!("{}:matches", product_id);
+                let redis_tuples: Vec<(&str, String)> =
+                    matched_order.to_redis_tuples();
+                let stream_name: String = format!("{}:matches", product_id);
                 let _result: RedisResult<()> =
                     con.xadd(&[stream_name], "*", &redis_tuples);
             }
@@ -134,9 +169,21 @@ fn matching_engine(product_id: &str) {
 fn main() {
     // TODO: for each product in product_ids spawn a new thread
     // Spawn worker threads with dedicated streams
-    let worker1 = { thread::spawn(move || matching_engine("GOLDEN_DRAGON")) };
-    let worker2 = { thread::spawn(move || matching_engine("VANGUARD")) };
+    let worker1: thread::JoinHandle<()> =
+        { thread::spawn(move || matching_engine("DRAGONS_LAIR")) };
+    let worker2: thread::JoinHandle<()> =
+        { thread::spawn(move || matching_engine("FAIRY_MINESHAFT")) };
 
     worker1.join().unwrap();
     worker2.join().unwrap();
 }
+/*
+
+
+
+Popping Orders from Redis Streams: Redis streams (XREADGROUP) don't inherently support "popping" in the way a queue does, but you can use XACK to acknowledge processing, and XDEL to delete once safely processed.
+
+Crash Resilience: If the matching engine crashes mid-processing, you can use XPENDING to check unacknowledged messages and retry them safely.
+
+Idempotency: Ensure orders have unique UUIDs and store processed orders in a separate Redis set (or an append-only log) to reject duplicates.
+*/

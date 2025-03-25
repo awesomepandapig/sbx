@@ -46,5 +46,5 @@ export const auth = betterAuth({
   },
   trustedOrigins: PROD
     ? [`https://${DOMAIN}`, `https://api.${DOMAIN}`]
-    : ['http://localhost'],
+    : ['http://localhost:5173'],
 });
