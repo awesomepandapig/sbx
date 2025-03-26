@@ -40,7 +40,7 @@ export default function SectionOne() {
           aspectRatio="aspect-square"
           textPosition="left"
         >
-          <PartyInvite/>
+          <PartyInvite />
         </Card>
       </div>
 

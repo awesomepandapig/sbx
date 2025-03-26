@@ -37,7 +37,7 @@ export class Order {
   status: 'received' | 'open' | 'done';
   settled: boolean;
   price?: number;
-  cancel_after?: string;
+  cancel_after?: 'min' | 'hour';
   size: number;
 
   constructor(data: {
@@ -60,8 +60,12 @@ export class Order {
     this.size = data.size;
     this.price = data.price;
 
-    if (this.type === 'limit') {
+    if (this.type === 'limit' && this.side == 'sell') {
       this.cancel_after = 'min'; // Set to min for mineshaft markets
+    }
+
+    if (this.type === 'limit' && this.side == 'buy') {
+      this.cancel_after = 'hour'; // Set to hour otherwise
     }
   }
 

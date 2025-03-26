@@ -1,13 +1,21 @@
 import { signIn } from "~/lib/auth";
+import { DOMAIN } from "~/lib/config";
 
-export default function DiscordButton() {
+interface DiscordButtonProps {
+  authenticated: boolean;
+}
+
+export default function DiscordButton({ authenticated }: DiscordButtonProps) {
   return (
     <button
       className="h-10 flex justify-center items-center border text-sm border-[rgba(82,82,82,0.7)] text-white bg-[#2b2b2b] px-6 py-2 rounded-full transition-all duration-300 ease-in-out hover:filter hover:drop-shadow-[0_0_10px_rgba(88,101,242,0.7)]"
       aria-label="Sign in with Discord"
       onClick={() => {
-        console.log("Button clicked");
-        signIn(); // Call the signIn function here
+        if (authenticated) {
+          window.location.href = `${DOMAIN}/trade/FRY`;
+        } else {
+          signIn();
+        }
       }}
       type="button"
     >

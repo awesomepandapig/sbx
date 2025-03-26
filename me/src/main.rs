@@ -115,8 +115,9 @@ fn matching_engine(product_id: &str) {
         redis::Client::open("redis://localhost/0").unwrap();
     let mut con: Connection = client.get_connection().unwrap();
 
-    let mut i = 0; // TODO: REMOVE
-    while i < 2 {
+    // let mut i = 0; // TODO: REMOVE
+    // while i < 2 {
+    loop {
         // Read new orders from stream
         let mut orders: Vec<Order> = Vec::new();
         read_orders_from_stream(
@@ -162,7 +163,7 @@ fn matching_engine(product_id: &str) {
             }
         }
 
-        i = i + 1; // TODO: REMOVE
+        // i = i + 1; // TODO: REMOVE
     }
 }
 
@@ -170,9 +171,11 @@ fn main() {
     // TODO: for each product in product_ids spawn a new thread
     // Spawn worker threads with dedicated streams
     let worker1: thread::JoinHandle<()> =
-        { thread::spawn(move || matching_engine("DRAGONS_LAIR")) };
+        { thread::spawn(move || matching_engine("DRG")) };
     let worker2: thread::JoinHandle<()> =
-        { thread::spawn(move || matching_engine("FAIRY_MINESHAFT")) };
+        { thread::spawn(move || matching_engine("FRY")) };
+    let worker3: thread::JoinHandle<()> =
+        { thread::spawn(move || matching_engine("JSP")) };
 
     worker1.join().unwrap();
     worker2.join().unwrap();

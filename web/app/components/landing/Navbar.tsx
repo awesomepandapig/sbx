@@ -1,6 +1,10 @@
 import DiscordButton from "~/components/landing/DiscordButton";
 
-export default function Navbar() {
+interface NavbarProps {
+  authenticated: boolean;
+}
+
+export default function Navbar({ authenticated }: NavbarProps) {
   return (
     <nav className="bg-[rgba(20, 20, 20, 0.5)] border-b border-[rgba(38,38,38,.7)] backdrop-blur-lg fixed top-0 w-full z-10">
       <div className="flex justify-between items-center max-w-[90em] mx-auto w-full h-16">
@@ -12,7 +16,7 @@ export default function Navbar() {
           >
             Docs
           </a>
-          <DiscordButton />
+          <DiscordButton authenticated={authenticated} />
         </div>
       </div>
     </nav>
