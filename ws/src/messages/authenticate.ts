@@ -1,12 +1,12 @@
 import { authenticate } from '../lib/index';
 import { AuthenticateMessage, AuthenticatedWebSocket } from '../models/index';
 
-export const handleAuthMessage = async (
-  msg: AuthenticateMessage,
+export const handleAuth = async (
+  message: AuthenticateMessage,
   connection: AuthenticatedWebSocket,
 ): Promise<void> => {
   try {
-    const authResult = await authenticate(msg.token);
+    const authResult = await authenticate(message.token);
     if (authResult.authenticated) {
       connection.authenticated = true;
       connection.user_id = authResult.user_id;

@@ -179,6 +179,7 @@ fn main() {
 
     worker1.join().unwrap();
     worker2.join().unwrap();
+    worker3.join().unwrap();
 }
 /*
 

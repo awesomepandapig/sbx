@@ -15,7 +15,8 @@ export async function getSession(cookie: string | null) {
 
     // If the session response is empty user is not logged-in
     const responseText = await response.text();
-    if(responseText.length == 0) { // && responseText != "null"
+    if (responseText.length == 0) {
+      // && responseText != "null"
       return;
     }
 
@@ -91,10 +92,10 @@ export async function authLoader({ request }: LoaderFunctionArgs) {
     if (session && session.user) {
       return { user: session.user };
     }
-    
+
     return { user: null };
   } catch (error) {
     console.error("Error in loader:", error);
     return { user: null };
   }
-};
+}

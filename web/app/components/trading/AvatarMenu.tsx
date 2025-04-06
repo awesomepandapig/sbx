@@ -1,15 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "~/lib/auth";
-import {
-  Settings,
-  LogOut,
-} from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 
 interface AvatarProps {
   userImg: string;
 }
 
-export default function AvatarWithMenu({ userImg }: AvatarProps) {
+export default function AvatarMenu({ userImg }: AvatarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

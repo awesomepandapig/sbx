@@ -1,11 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import { z } from 'zod';
+import { activeProducts } from '../config/index';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
-
-export const productSchema = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, '../../../schemas/product.schema.json'),
-    'utf8',
-  ),
-);
+export const productSchema = z
+  .string()
+  .refine((productId) => activeProducts.has(productId), {
+    message: 'Invalid product ID',
+  });

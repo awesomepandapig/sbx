@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, useRef, useEffect } from "react";
+import { signIn } from "~/lib/auth";
 import { API_URL } from "~/lib/config";
 
 interface TradingInterfaceProps {
@@ -41,7 +42,7 @@ const OrderTypeButton: React.FC<{
 }> = ({ type, isActive, onClick }) => (
   <button
     className={`px-3 py-2 rounded-full text-xs font-medium ${
-      isActive 
+      isActive
         ? "bg-[rgb(0,16,51)] text-[rgb(87,139,250)]"
         : "bg-transparent text-white"
     }`}
@@ -69,10 +70,10 @@ interface LimitPriceInputProps {
   isActive: boolean;
 }
 
-const LimitPriceInput: React.FC<LimitPriceInputProps> = ({ 
-  limitPrice, 
+const LimitPriceInput: React.FC<LimitPriceInputProps> = ({
+  limitPrice,
   onLimitPriceChange,
-  isActive
+  isActive,
 }) => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -87,8 +88,8 @@ const LimitPriceInput: React.FC<LimitPriceInputProps> = ({
       <label className="block">
         <div
           className={`outline-none flex items-center bg-[#1E1E1E] border rounded-[4px] h-8 px-[10px] py-[8px] text-[11px] cursor-text ${
-            isActive 
-              ? "border-blue-500 outline-2 outline-blue-500" 
+            isActive
+              ? "border-blue-500 outline-2 outline-blue-500"
               : "border-[#333]"
           }`}
           onClick={(e) => e.currentTarget.querySelector("input")?.focus()}
@@ -113,15 +114,13 @@ const LimitPriceInput: React.FC<LimitPriceInputProps> = ({
   );
 };
 
-const Divider = () => (
-  <div className="h-px bg-[#333] w-full my-2"></div>
-);
+const Divider = () => <div className="h-px bg-[#333] w-full my-2"></div>;
 
 export default function TradingInterface({
-  symbol, 
-  authenticated, 
-  currentMarketPrice = 0 
-}: TradingInterfaceProps)  {
+  symbol,
+  authenticated,
+  currentMarketPrice = 0,
+}: TradingInterfaceProps) {
   // State management
   const [side, setSide] = useState<TradeSide>("buy");
   const [orderType, setOrderType] = useState<OrderType>("limit");
@@ -133,21 +132,22 @@ export default function TradingInterface({
   // Calculate total order value
   const calculateOrderTotal = () => {
     let price = 0;
-    if(limitPrice) {
+    if (limitPrice) {
       price = parseFloat(limitPrice);
     }
-    return orderType === "market" 
-      ? currentMarketPrice * orderSize 
+    return orderType === "market"
+      ? currentMarketPrice * orderSize
       : price * orderSize;
   };
 
   // Price adjustment helpers
   const adjustPrice = (percentage: number) => {
     const currentPrice = parseFloat(limitPrice) || currentMarketPrice;
-    const adjustment = side === "buy" 
-      ? currentPrice * (1 - percentage / 100)
-      : currentPrice * (1 + percentage / 100);
-    
+    const adjustment =
+      side === "buy"
+        ? currentPrice * (1 - percentage / 100)
+        : currentPrice * (1 + percentage / 100);
+
     setLimitPrice(adjustment.toFixed(2));
   };
 
@@ -157,7 +157,7 @@ export default function TradingInterface({
   };
 
   const handleBidAskPrice = () => {
-    // Simplified: using market price 
+    // Simplified: using market price
     // In a real implementation, this would fetch bid/ask from an API
     setLimitPrice(currentMarketPrice.toFixed(2));
   };
@@ -170,8 +170,8 @@ export default function TradingInterface({
       product_id: `${symbol}`,
       side: `${side}`,
       type: `${orderType}`,
-      size: orderSize
-    }
+      size: orderSize,
+    };
 
     if (limitPrice && orderType === "limit") {
       body.price = Number(limitPrice);
@@ -180,25 +180,24 @@ export default function TradingInterface({
     const response = await fetch(`${API_URL}/orders/`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
   }
 
   const AuthButtons = () => {
-    const isOrderButtonDisabled = 
-      (orderType === "limit" && limitPrice === "0.00") || 
-      !authenticated;
+    const isOrderButtonDisabled =
+      (orderType === "limit" && limitPrice === "0.00") || !authenticated;
 
     return (
       <div className="space-y-2">
-        {authenticated ? 
-          <button 
+        {authenticated ? (
+          <button
             className={`w-full py-2 rounded-full text-sm font-medium ${
-              isOrderButtonDisabled 
-                ? "bg-gray-500/50 text-gray-500 cursor-not-allowed" 
+              isOrderButtonDisabled
+                ? "bg-gray-500/50 text-gray-500 cursor-not-allowed"
                 : "bg-blue-400 text-blue-950"
             }`}
             onClick={createOrder}
@@ -206,11 +205,11 @@ export default function TradingInterface({
           >
             {side === "buy" ? "Buy" : "Sell"}
           </button>
-          : 
-          <button className="w-full bg-blue-400 text-blue-950 py-2 rounded-full text-sm font-medium">
-            Sign up
+        ) : (
+          <button className="w-full bg-blue-400 text-blue-950 py-2 rounded-full text-sm font-medium" onClick={signIn}>
+            Sign in
           </button>
-        }
+        )}
       </div>
     );
   };
@@ -221,21 +220,21 @@ export default function TradingInterface({
     sellActiveClass: "border-t-2 border-t-[#F44336] text-[#F44336]",
     inactiveButtonClass: "text-gray-400 bg-[rgb(40,43,49)]",
     orderTypeActiveClass: "bg-[rgb(0,16,51)] text-[rgb(87,139,250)]",
-    orderTypeInactiveClass: "bg-transparent text-white"
+    orderTypeInactiveClass: "bg-transparent text-white",
   };
 
   // Render methods for different sections
   const SideToggle = () => (
     <div className="flex w-full">
-      <SideToggleButton 
-        label="Buy" 
-        isActive={side === "buy"} 
+      <SideToggleButton
+        label="Buy"
+        isActive={side === "buy"}
         onClick={() => setSide("buy")}
         activeClass={STYLES.buyActiveClass}
       />
-      <SideToggleButton 
-        label="Sell" 
-        isActive={side === "sell"} 
+      <SideToggleButton
+        label="Sell"
+        isActive={side === "sell"}
         onClick={() => setSide("sell")}
         activeClass={STYLES.sellActiveClass}
       />
@@ -244,11 +243,11 @@ export default function TradingInterface({
 
   const OrderTypeButtons = () => {
     const orderTypes: OrderType[] = ["limit", "market"];
-    
+
     return (
       <div className="flex gap-2 mb-4">
         {orderTypes.map((type) => (
-          <OrderTypeButton 
+          <OrderTypeButton
             key={type}
             type={type}
             isActive={orderType === type}
@@ -261,31 +260,31 @@ export default function TradingInterface({
 
   const PriceAdjustmentButtons = () => {
     const priceAdjustments = [
-      { 
-        label: "Mid", 
-        action: handleMidPrice 
+      {
+        label: "Mid",
+        action: handleMidPrice,
       },
-      { 
-        label: side === "buy" ? "Bid" : "Ask", 
-        action: handleBidAskPrice 
+      {
+        label: side === "buy" ? "Bid" : "Ask",
+        action: handleBidAskPrice,
       },
-      { 
-        label: side === "buy" ? "1%↓" : "1%↑", 
-        action: () => adjustPrice(1) 
+      {
+        label: side === "buy" ? "1%↓" : "1%↑",
+        action: () => adjustPrice(1),
       },
-      { 
-        label: side === "buy" ? "5%↓" : "5%↑", 
-        action: () => adjustPrice(5) 
-      }
+      {
+        label: side === "buy" ? "5%↓" : "5%↑",
+        action: () => adjustPrice(5),
+      },
     ];
 
     return (
       <div className="grid grid-cols-4 gap-1 mb-4">
         {priceAdjustments.map((adjustment, index) => (
-          <AdjustmentButton 
-            key={index} 
-            label={adjustment.label} 
-            onClick={adjustment.action} 
+          <AdjustmentButton
+            key={index}
+            label={adjustment.label}
+            onClick={adjustment.action}
           />
         ))}
       </div>
@@ -295,14 +294,14 @@ export default function TradingInterface({
   return (
     <div className={`flex flex-col bg-[#121212] text-white h-full`}>
       <SideToggle />
-      
+
       <div className={`p-4 relative`}>
         <OrderTypeButtons />
-        
+
         {/* Conditionally render limit price and price adjustment buttons */}
         {orderType === "limit" && (
           <>
-            <LimitPriceInput 
+            <LimitPriceInput
               limitPrice={limitPrice}
               onLimitPriceChange={setLimitPrice}
               isActive={isLimitPriceInputActive}
@@ -310,7 +309,7 @@ export default function TradingInterface({
             <PriceAdjustmentButtons />
           </>
         )}
-        
+
         <Divider />
         <div className="space-y-1 mb-4 text-xs">
           <div className="flex justify-between">
@@ -320,7 +319,7 @@ export default function TradingInterface({
             </span>
           </div>
         </div>
-        <AuthButtons/>
+        <AuthButtons />
       </div>
     </div>
   );

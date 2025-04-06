@@ -1,4 +1,4 @@
-export type { AuthenticatedWebSocket } from './authenticated-websocket';
+export { AuthenticatedWebSocket } from './AuthenticatedWebSocket';
 export type {
   AuthenticateMessage,
   SubscribeMessage,
@@ -6,4 +6,5 @@ export type {
   Message,
 } from './messages';
 export { MessageSchema } from './messages';
-export type { Order } from './order';
+export * from './OrderBook';
+export { Order } from './order';

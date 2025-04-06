@@ -1,60 +1,64 @@
 import { WebSocketServer } from 'ws';
-import { randomUUID } from 'crypto';
-import type { AuthenticatedWebSocket } from './models/index';
-import { MessageSchema } from './models/index';
-import { handleAuthMessage } from 'messages/index';
+import { MessageSchema, AuthenticatedWebSocket } from './models/index';
+import { handleAuth, handleSubscription } from './messages/index';
+import { channelHandlers } from './channels/index';
 
-const connections = new Map<string, AuthenticatedWebSocket>();
 const PORT = 8080;
 const wss = new WebSocketServer({ port: PORT });
 
-wss.on('connection', function connection(ws) {
-  const uuid = randomUUID();
-  connections.set(uuid, ws as AuthenticatedWebSocket);
+wss.on('connection', function connection(rawWs) {
+  const ws = new AuthenticatedWebSocket(rawWs);
+  ws.on('error', console.error); // TODO: replace with winston or pino
 
-  ws.on('error', console.error);
+  // Disconnect if no subscribe message has been received within 5 seconds.
+  const timeout = setTimeout(() => {
+    ws.sendError('No subscribe message received within 5 seconds');
+    ws.close();
+  }, 5000);
 
   ws.on('message', async function message(data) {
-    const connection = connections.get(uuid);
-    if (!connection) {
-      return;
-    }
-
     let message;
     try {
       message = MessageSchema.parse(JSON.parse(data.toString()));
-    } catch (error) {
-      console.log(error);
-      connection.send(
-        JSON.stringify({
-          type: 'error',
-          message: 'Invalid message format.',
-        }),
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        ws.sendError('Invalid message format.');
+      }
       return;
     }
 
     switch (message.type) {
       case 'authenticate':
-        await handleAuthMessage(message, connection);
+        await handleAuth(message, ws);
         break;
       case 'subscribe':
-        // Handle subscribe message
+        clearTimeout(timeout);
+        await handleSubscription(message, ws);
+        break;
+      case 'unsubscribe':
+        await handleSubscription(message, ws);
         break;
       default:
-        console.warn('Unknown message type:', message.type);
-        connection.send(
-          JSON.stringify({
-            type: 'error',
-            message: 'Unknown message type.',
-          }),
-        );
+        ws.sendError('Unknown message type.');
         break;
     }
   });
 
   ws.on('close', function close() {
-    connections.delete(uuid);
+    // Unsubscribe from all channels
+    for (const channel in channelHandlers) {
+      const handler = channelHandlers[channel];
+      handler.cleanup(ws);
+    }
+  });
+});
+
+// Handle server shutdown gracefully
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing WebSocket server');
+  wss.close(() => {
+    console.log('WebSocket server closed');
+    process.exit(0);
   });
 });
 

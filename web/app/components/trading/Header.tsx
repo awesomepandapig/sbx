@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import AvatarWithMenu from "./Menu";
+import AvatarMenu from "./AvatarMenu";
 
 interface HeaderProps {
   ticker: string;
@@ -9,23 +9,6 @@ interface HeaderProps {
 type SignInButtonsProps = {
   userImg?: string;
 };
-
-const SignInButtons = ({ userImg }: SignInButtonsProps) => (
-  <div className="flex items-center space-x-3">
-    {userImg ? (
-      <AvatarWithMenu userImg={userImg} />
-    ) : (
-      <>
-        <button className="px-4 py-2 bg-[#1E1E1E] text-white rounded-full">
-          Sign in
-        </button>
-        <button className="px-4 py-2 bg-[#4169E1] text-white rounded-full">
-          Sign up
-        </button>
-      </>
-    )}
-  </div>
-);
 
 const StatBlock = ({
   label,
@@ -97,7 +80,9 @@ export default function Header({ ticker, userImg }: HeaderProps) {
           <StatBlock label="24H Low" value={low.toLocaleString()} />
         </div>
       </div>
-      <SignInButtons userImg={userImg} />
+      {userImg ? (
+      <AvatarMenu userImg={userImg} />
+      ): <></>}
     </header>
   );
 }

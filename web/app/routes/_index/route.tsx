@@ -5,7 +5,7 @@ import SectionTwo from "~/components/landing/SectionTwo";
 import Footer from "~/components/landing/Footer";
 import { useLoaderData } from "@remix-run/react";
 
-import { authLoader } from "~/lib/auth"
+import { authLoader } from "~/lib/auth";
 export const loader = authLoader;
 
 export default function Home() {
