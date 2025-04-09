@@ -1,5 +1,12 @@
-import { activeProducts, waitForRedis, redisClient } from '../config/index';
-import { AuthenticatedWebSocket, OrderBook, Update, Order } from 'models/index';
+import { activeProducts, redisClient, waitForRedis } from '../config/index';
+import { AuthenticatedWebSocket, SubscribeMessage, UnsubscribeMessage } from 'models/index';
+
+interface Update {
+  side: 'ask' | 'bid';
+  event_time: string;
+  price_level: number;
+  new_quantity: number;
+}
 
 interface Event {
   type: 'snapshot' | 'update';
@@ -7,54 +14,76 @@ interface Event {
   updates: Update[];
 }
 
-const level2Subs = new Map<AuthenticatedWebSocket, Map<string, Update[]>>();
-const OrderBooks = new Map<string, OrderBook>();
+// Track subscriptions: WebSocket -> Set of product IDs
+const subscriptions = new Map<AuthenticatedWebSocket, Set<string>>();
 
-// Stream IDs for tracking Redis streams
-let orderStreamId = '0-0';
-let matchStreamId = '0-0';
-
-export function subscribe(ws: AuthenticatedWebSocket, products: Set<string>) {
+export async function subscribe(
+  ws: AuthenticatedWebSocket,
+  message: SubscribeMessage
+) {
   // If no products, subscribe to all products
+  let products = new Set(message.product_ids);
   if (products.size === 0) {
-    products = activeProducts;
+    products = new Set(activeProducts);
   }
 
   // Initialize subscription map for this WebSocket if not exists
-  if (!level2Subs.has(ws)) {
-    level2Subs.set(ws, new Map());
+  if (!subscriptions.has(ws)) {
+    subscriptions.set(ws, new Set());
+  }
+
+  const subscribedProducts = subscriptions.get(ws)!;
+  const newProducts = new Set<string>();
+
+  // Find products that are newly subscribed
+  for (const productId of products) {
+    if (!subscribedProducts.has(productId)) {
+      newProducts.add(productId);
+      subscribedProducts.add(productId);
+    }
   }
 
   // Send subscription confirmation
   ws.sendMessage('subscriptions', [
-    { subscriptions: { level2: Array.from(products) } },
+    { subscriptions: { level2: Array.from(subscribedProducts) } },
   ]);
 
-  // Send initial snapshot for each product
+  // Fetch and send initial snapshots for newly subscribed products
+  await sendSnapshots(ws, newProducts);
+}
+
+async function sendSnapshots(
+  ws: AuthenticatedWebSocket,
+  products: Set<string>,
+) {
   const events: Event[] = [];
+
   for (const productId of products) {
-    const orderBook = OrderBooks.get(productId);
-    if (!orderBook) continue;
+    try {
+      // TODO: Get snapshot from redis
+      const snapshotKey = `snapshot`;
+      const snapshotRaw = await redisClient.hGet(snapshotKey, productId);
+      if (!snapshotRaw) return;
+      const snapshot = JSON.parse(snapshotRaw);
 
-    const snapshot = orderBook.getSnapshot();
-    // Store the snapshot for this product for future diff comparisons
-    const subscriber = level2Subs.get(ws);
-    if (!subscriber) continue;
-
-    subscriber.set(productId, snapshot);
-
-    events.push({
-      type: 'snapshot',
-      product_id: productId,
-      updates: snapshot,
-    });
+      events.push({
+        type: 'snapshot',
+        product_id: productId,
+        updates: snapshot,
+      });
+    } catch (error) {
+      console.error(`Failed to get snapshot for ${productId}:`, error);
+    }
   }
-  ws.sendMessage('l2_data', events);
+  // Send all snapshots to the client
+  if (events.length > 0) {
+    ws.sendMessage('l2_data', events);
+  }
 }
 
 export function unsubscribe(ws: AuthenticatedWebSocket, products: Set<string>) {
   // Get the current subscription
-  const subscribedProducts = level2Subs.get(ws);
+  const subscribedProducts = subscriptions.get(ws);
 
   // If not subscribed, send empty subscription message
   if (!subscribedProducts) {
@@ -64,7 +93,7 @@ export function unsubscribe(ws: AuthenticatedWebSocket, products: Set<string>) {
 
   // If no products specified, unsubscribe from all
   if (products.size === 0) {
-    level2Subs.delete(ws);
+    subscriptions.delete(ws);
     ws.sendMessage('subscriptions', [{ subscriptions: {} }]);
     return;
   }
@@ -76,111 +105,50 @@ export function unsubscribe(ws: AuthenticatedWebSocket, products: Set<string>) {
 
   // Update subscription state
   if (subscribedProducts.size === 0) {
-    level2Subs.delete(ws);
+    subscriptions.delete(ws);
   }
 
   // Send updated subscription
   ws.sendMessage('subscriptions', [
-    { subscriptions: { level2: Array.from(subscribedProducts.keys()) } },
+    { subscriptions: { level2: Array.from(subscribedProducts) } },
   ]);
 }
 
 export function cleanup(ws: AuthenticatedWebSocket) {
-  level2Subs.delete(ws);
+  subscriptions.delete(ws);
 }
 
-async function processNewOrders() {
-  for (const productId of activeProducts) {
-    const orderStream = `${productId}:new`;
-    const result = await redisClient.xRead([
-      { key: orderStream, id: orderStreamId },
-    ]);
-
-    if (!result?.length) continue;
-
-    const stream = result[0];
-    orderStreamId = stream.messages.at(-1)?.id ?? orderStreamId;
-
-    const orderBook = OrderBooks.get(productId);
-    if (!orderBook) continue;
-
-    for (const message of stream.messages) {
-      const order = new Order(message.message);
-      orderBook.addOrder(order);
+function handleUpdate(message: string) {
+  const parsedMessage = JSON.parse(message);
+  const productId = parsedMessage.product_id;
+  // Send to all clients subscribed to this product
+  for (const [ws, subscribedProducts] of subscriptions) {
+    if (subscribedProducts.has(productId)) {
+      ws.sendMessage('l2_data', [parsedMessage]);
     }
   }
 }
 
-async function processNewMatches() {
-  for (const productId of activeProducts) {
-    const matchStream = `${productId}:matches`;
-    const result = await redisClient.xRead([
-      { key: matchStream, id: matchStreamId },
-    ]);
+let initialized = false;
 
-    if (!result?.length) return;
+async function initialize() {
+  if (initialized) return;
 
-    const stream = result[0];
-    matchStreamId = stream.messages.at(-1)?.id ?? matchStreamId;
-
-    const orderBook = OrderBooks.get(productId);
-    if (!orderBook) continue;
-
-    for (const message of stream.messages) {
-      const order = new Order(message.message);
-      orderBook.removeOrder(order);
-    }
-  }
-}
-
-function broadcastUpdates() {
-  level2Subs.forEach((productMap, ws) => {
-    const events: Event[] = [];
-
-    productMap.forEach((previousSnapshot, productId) => {
-      const orderBook = OrderBooks.get(productId);
-      if (!orderBook) return;
-
-      const currentSnapshot = orderBook.getSnapshot();
-      const diffs = orderBook.getDiffs(currentSnapshot, previousSnapshot);
-
-      if (diffs.length > 0) {
-        events.push({
-          type: 'update',
-          product_id: productId,
-          updates: diffs,
-        });
-
-        // Update the stored snapshot after sending diffs
-        productMap.set(productId, currentSnapshot);
-      }
-    });
-
-    if (events.length > 0) {
-      ws.sendMessage('l2_data', events);
-    }
-  });
-}
-
-const initialize = async () => {
-  // Wait for Redis initialization to complete
   await waitForRedis();
 
-  // Initialize order books for all active products
-  for (const productId of activeProducts) {
-    OrderBooks.set(productId, new OrderBook());
-  }
+  const redisPubSub = redisClient.duplicate();
+  await redisPubSub.connect();
+  
+  const channels = Array.from(activeProducts).map(
+    (productId) => `${productId}:updates`,
+  );
+  await redisPubSub.subscribe(channels, (message) => {
+    // console.log(message);
+    handleUpdate(message);
+  });
 
-  // Start processing
-  setInterval(async () => {
-    try {
-      await processNewOrders();
-      await processNewMatches();
-      broadcastUpdates();
-    } catch (error) {
-      console.error('Error in level2 processing:', error);
-    }
-  }, 1000);
-};
+  console.log('Level2 channel initialized with pub/sub model');
+  initialized = true;
+}
 
 initialize();

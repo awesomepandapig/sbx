@@ -80,9 +80,7 @@ export default function Header({ ticker, userImg }: HeaderProps) {
           <StatBlock label="24H Low" value={low.toLocaleString()} />
         </div>
       </div>
-      {userImg ? (
-      <AvatarMenu userImg={userImg} />
-      ): <></>}
+      {userImg ? <AvatarMenu userImg={userImg} /> : <></>}
     </header>
   );
 }

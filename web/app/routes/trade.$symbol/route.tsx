@@ -42,7 +42,7 @@ export default function Trade() {
 
           {/* Middle section - Order Book */}
           <div className="w-64">
-            <OrderBook />
+            <OrderBook symbol={symbol} />
           </div>
 
           {/* Right section - Trading Interface */}
@@ -52,7 +52,7 @@ export default function Trade() {
         </div>
       </div>
 
-      <OrderDrawer authenticated={user != null}/>
+      <OrderDrawer authenticated={user != null} />
     </main>
   );
 }

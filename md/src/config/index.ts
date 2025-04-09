@@ -2,7 +2,6 @@ import 'dotenv/config';
 import { createClient } from 'redis';
 
 export const PROD = process.env.NODE_ENV === 'production';
-export const DOMAIN = process.env.DOMAIN || 'localhost';
 export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 export const activeProducts = new Set<string>();
@@ -46,7 +45,7 @@ export async function closeRedisConnections() {
   try {
     await redisClient.quit();
     await redisSubscriber.quit();
-    console.log('Redis main connection closed');
+    console.log('Redis connections closed');
   } catch (error) {
     console.error('Error closing Redis connections:', error);
   }

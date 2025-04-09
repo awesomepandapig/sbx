@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { productSchema } from './product';
 
 export enum MessageType {
-  AUTHENTICATE = 'authenticate',
   SUBSCRIBE = 'subscribe',
   UNSUBSCRIBE = 'unsubscribe',
 }
@@ -11,16 +10,12 @@ export const BaseMessageSchema = z.object({
   type: z.nativeEnum(MessageType),
 });
 
-export const AuthenticateMessageSchema = BaseMessageSchema.extend({
-  type: z.literal(MessageType.AUTHENTICATE),
-  token: z.string(),
-});
-
 // Type of subcribe we send product_ids and chanells to subscribe to
 export const SubscribeMessageSchema = BaseMessageSchema.extend({
   type: z.literal(MessageType.SUBSCRIBE),
   product_ids: z.array(productSchema),
   channel: z.string(),
+  jwt: z.string().optional()
 });
 
 // Unsubscribe message we send product_ids and channels to unsubscribe from
@@ -31,12 +26,10 @@ export const UnsubscribeMessageSchema = BaseMessageSchema.extend({
 });
 
 export const MessageSchema = z.union([
-  AuthenticateMessageSchema,
   SubscribeMessageSchema,
   UnsubscribeMessageSchema,
 ]);
 
-export type AuthenticateMessage = z.infer<typeof AuthenticateMessageSchema>;
 export type SubscribeMessage = z.infer<typeof SubscribeMessageSchema>;
 export type UnsubscribeMessage = z.infer<typeof UnsubscribeMessageSchema>;
 export type Message = z.infer<typeof MessageSchema>;

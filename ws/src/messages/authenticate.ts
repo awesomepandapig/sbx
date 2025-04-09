@@ -1,38 +1,27 @@
 import { authenticate } from '../lib/index';
-import { AuthenticateMessage, AuthenticatedWebSocket } from '../models/index';
+import { SubscribeMessage, AuthenticatedWebSocket } from '../models/index';
 
 export const handleAuth = async (
-  message: AuthenticateMessage,
-  connection: AuthenticatedWebSocket,
+  ws: AuthenticatedWebSocket,
+  message: SubscribeMessage
 ): Promise<void> => {
   try {
-    const authResult = await authenticate(message.token);
+    if(!message.jwt) {
+      ws.sendError('JWT missing. Closing connection.');
+      ws.close();
+      return;
+    }
+    const authResult = await authenticate(message.jwt);
     if (authResult.authenticated) {
-      connection.authenticated = true;
-      connection.user_id = authResult.user_id;
-      connection.send(
-        JSON.stringify({
-          type: 'authenticated',
-          message: 'Authentication successful!',
-        }),
-      );
+      ws.authenticated = true;
+      ws.user_id = authResult.user_id;
     } else {
-      connection.send(
-        JSON.stringify({
-          type: 'error',
-          message: 'Authentication failed. Closing connection.',
-        }),
-      );
-      connection.close(1008, 'Authentication failed');
+      ws.sendError('Authentication failed. Closing connection.');
+      ws.close();
     }
   } catch (error) {
     console.error('Error during authentication:', error);
-    connection.send(
-      JSON.stringify({
-        type: 'error',
-        message: 'An error occurred during authentication.',
-      }),
-    );
-    connection.close(1011, 'Internal error');
+    ws.sendError('Authentication failed. Closing connection.');
+    ws.close();
   }
 };

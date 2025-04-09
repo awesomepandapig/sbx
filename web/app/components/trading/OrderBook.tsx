@@ -1,117 +1,216 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react";
+import { WS_URL } from "~/lib/config";
 
-interface OrderData {
-  amount: string
-  price: string
+interface OrderBookProps {
+  symbol: string;
 }
 
-export default function OrderBook() {
-  const [activeTab, setActiveTab] = useState("orderbook")
+interface Level2Update {
+  side: 'ask' | 'bid';
+  price_level: string | number;
+  new_quantity: string | number;
+}
 
-  // Sample data for asks (sell orders) - in descending price order
-  const asks: OrderData[] = [
-    { amount: "0.1794131", price: "83453.27" },
-    { amount: "0.00552137", price: "83453.26" },
-    { amount: "0.00052542", price: "83449.90" },
-    { amount: "0.02586384", price: "83449.69" },
-    { amount: "0.1344236", price: "83449.52" },
-    { amount: "0.07841755", price: "83449.49" },
-    { amount: "0.17975058", price: "83448.97" },
-    { amount: "0.01478802", price: "83445.90" },
-    { amount: "0.0236296", price: "83445.52" },
-    { amount: "0.16993152", price: "83444.45" },
-    { amount: "0.00012465", price: "83444.44" },
-    { amount: "0.13492766", price: "83443.88" },
-  ]
+interface OrderLevel {
+  price: number;
+  quantity: number;
+}
 
-  // Sample data for bids (buy orders) - in descending price order
-  const bids: OrderData[] = [
-    { amount: "0.00060992", price: "83443.87" },
-    { amount: "0.00012465", price: "83438.77" },
-    { amount: "0.01478928", price: "83438.76" },
-    { amount: "0.00005992", price: "83438.00" },
-    { amount: "0.16625526", price: "83436.89" },
-    { amount: "0.0522170", price: "83436.47" },
-    { amount: "0.02996319", price: "83435.68" },
-    { amount: "0.00100000", price: "83434.37" },
-    { amount: "0.00549173", price: "83434.28" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.11985783", price: "83432.17" },
-    { amount: "0.02378584", price: "83430.67" },
-    { amount: "0.1248000", price: "83430.50" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-    { amount: "0.02353571", price: "83434.27" },
-    { amount: "0.11985522", price: "83433.99" },
-    { amount: "0.06159327", price: "83433.38" },
-    { amount: "0.2142951", price: "83432.79" },
-  ]
+function AskRow({ price, quantity }: { price: number; quantity: number }) {
+  return (
+    <div className="flex justify-between px-4 text-xs py-1 border-l-2 border-[#ff4d4d] bg-[#121212]">
+      <div className="w-1/2 text-left">{quantity.toFixed(0)}</div>
+      <div className="w-1/2 text-right text-[#ff4d4d]">{price.toFixed(0)}</div>
+    </div>
+  );
+}
 
-  // Calculate the spread
-  const lowestAsk = asks.length > 0 ? Number.parseFloat(asks[asks.length - 1].price) : 0
-  const highestBid = bids.length > 0 ? Number.parseFloat(bids[0].price) : 0
-  const spread = lowestAsk - highestBid
-  const spreadFormatted = spread.toFixed(2)
+function BidRow({ price, quantity }: { price: number; quantity: number }) {
+  return (
+    <div className="flex justify-between px-4 py-1 text-xs border-l-2 border-[#4caf50] bg-[#121212]">
+      <div className="w-1/2 text-left">{quantity.toFixed(0)}</div>
+      <div className="w-1/2 text-right text-[#4caf50]">{price.toFixed(0)}</div>
+    </div>
+  );
+}
+
+function EmptyRow({ side }: { side: "bid" | "ask" }) {
+  return (
+    <div className={`flex justify-between px-4 py-1 text-xs border-l-2 ${
+      side === "ask" ? "border-[#ff4d4d]" : "border-[#4caf50]"
+    } bg-[#121212] opacity-30`}>
+      <div className="w-1/2 text-left">-</div>
+      <div className="w-1/2 text-right">-</div>
+    </div>
+  );
+}
+
+export default function OrderBook({ symbol }: OrderBookProps) {
+  const depth = 20;
+  // Maps to maintain the client-side orderbook state
+  const asksMapRef = useRef(new Map<number, number>()); // price -> quantity
+  const bidsMapRef = useRef(new Map<number, number>()); // price -> quantity
+  
+  // Visible price levels for rendering
+  const [visibleAsks, setVisibleAsks] = useState<OrderLevel[]>([]);
+  const [visibleBids, setVisibleBids] = useState<OrderLevel[]>([]);
+  
+  // Spread calculation
+  const [spread, setSpread] = useState<number>(0);
+
+  useEffect(() => {
+    const asksMap = asksMapRef.current;
+    const bidsMap = bidsMapRef.current;
+    
+    // Updates the view based on current state
+    const updateOrderbookView = () => {
+      // Get sorted bids and asks
+      const sortedBids = [...bidsMap.entries()]
+        .sort((a, b) => b[0] - a[0]); // Descending by price
+        
+      const sortedAsks = [...asksMap.entries()]
+        .sort((a, b) => a[0] - b[0]); // Ascending by price
+      
+      // Take only what we need to display
+      const topBids = sortedBids.slice(0, depth).map(([price, quantity]) => ({ 
+        price, 
+        quantity 
+      }));
+      
+      const topAsks = sortedAsks.slice(0, depth).map(([price, quantity]) => ({ 
+        price, 
+        quantity 
+      }));
+      
+      // Calculate spread
+      const highestBid = sortedBids.length > 0 ? sortedBids[0][0] : 0;
+      const lowestAsk = sortedAsks.length > 0 ? sortedAsks[0][0] : Infinity;
+      const currentSpread = lowestAsk !== Infinity && highestBid !== 0 
+        ? Math.max(0, lowestAsk - highestBid) 
+        : 0;
+      
+      // Update state
+      setVisibleBids(topBids);
+      setVisibleAsks(topAsks);
+      setSpread(currentSpread);
+    };
+    
+    const ws = new WebSocket(WS_URL);
+    
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          product_ids: [symbol],
+          channel: "level2",
+        })
+      );
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (!data || data.channel !== "l2_data") return;
+      
+      const events = data.events;
+      if (!events) return;
+      
+      let hasUpdates = false;
+      
+      // Process all updates
+      for (const event of events) {
+        if (!event.updates) continue;
+        
+        for (const update of event.updates) {
+          const price = Number(update.price_level);
+          const quantity = Number(update.new_quantity);
+          
+          if (update.side === "ask") {
+            if (quantity > 0) {
+              asksMap.set(price, quantity);
+            } else {
+              asksMap.delete(price);
+            }
+            hasUpdates = true;
+          } 
+          else if (update.side === "bid") {
+            if (quantity > 0) {
+              bidsMap.set(price, quantity);
+            } else {
+              bidsMap.delete(price);
+            }
+            hasUpdates = true;
+          }
+        }
+      }
+      
+      // Only update the view if we have changes
+      if (hasUpdates) {
+        updateOrderbookView();
+      }
+    };
+    
+    // Initial view update
+    updateOrderbookView();
+    
+    return () => {
+      ws.close();
+    };
+  }, [symbol, depth]);
+  
+  // Pad arrays to ensure consistent display size
+  const paddedAsks = [...visibleAsks];
+  const paddedBids = [...visibleBids];
+  
+  while (paddedAsks.length < depth) {
+    paddedAsks.push({ price: 0, quantity: 0 });
+  }
+  
+  while (paddedBids.length < depth) {
+    paddedBids.push({ price: 0, quantity: 0 });
+  }
 
   return (
     <div className="flex flex-col h-[calc(100%-60px)] bg-[#121212] w-full max-w-md text-white border-l border-r border-[#2a2a2a]">
-      {/* Column headers */}
       <div className="flex justify-between px-4 py-2 text-gray-500 text-xs bg-[#121212] sticky top-0 z-10">
         <div className="w-1/2 text-left">Amount</div>
         <div className="w-1/2 text-right">Price</div>
       </div>
 
-      {/* Single scrollable container for all content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-        {/* Asks (sell orders) */}
-        {asks.map((ask, index) => (
-          <div key={`ask-${index}`} className="flex justify-between px-4 text-xs py-1 border-l-2 border-[#ff4d4d] bg-[#121212]">
-            <div className="w-1/2 text-left">{ask.amount}</div>
-            <div className="w-1/2 text-right text-[#ff4d4d]">{ask.price}</div>
-          </div>
-        ))}
+        {/* Asks - display in ascending order (lowest ask at bottom) */}
+        {paddedAsks.map((level, index) => 
+          level.price > 0 ? (
+            <AskRow 
+              key={`ask-${level.price || index}`} 
+              price={level.price} 
+              quantity={level.quantity} 
+            />
+          ) : (
+            <EmptyRow key={`empty-ask-${index}`} side="ask" />
+          )
+        )}
 
-        {/* Spread */}
         <div className="flex justify-between px-4 py-2 bg-[#1a1a1a] border-t text-xs border-b border-gray-800">
           <div className="text-gray-500">Spread</div>
-          <div className="text-white">{spreadFormatted}</div>
+          <div className="text-white">{spread.toFixed(0)}</div>
         </div>
 
-        {/* Bids (buy orders) */}
-        {bids.map((bid, index) => (
-          <div key={`bid-${index}`} className="flex justify-between px-4 py-1 text-xs border-l-2 border-[#4caf50] bg-[#121212]">
-            <div className="w-1/2 text-left">{bid.amount}</div>
-            <div className="w-1/2 text-right text-[#4caf50]">{bid.price}</div>
-          </div>
-        ))}
+        {/* Bids - display in descending order (highest bid at top) */}
+        {paddedBids.map((level, index) => 
+          level.price > 0 ? (
+            <BidRow 
+              key={`bid-${level.price || index}`} 
+              price={level.price} 
+              quantity={level.quantity} 
+            />
+          ) : (
+            <EmptyRow key={`empty-bid-${index}`} side="bid" />
+          )
+        )}
       </div>
     </div>
-  )
+  );
 }

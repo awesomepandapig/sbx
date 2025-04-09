@@ -8,10 +8,10 @@ import { API_URL } from "~/lib/config";
 async function getOrders() {
   try {
     const response = await fetch(`${API_URL}/orders`, {
-      credentials: "include"
-    }) 
-    if(!response.ok) {
-      throw new Error("unable to get orders") // TODO: change order message
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("unable to get orders"); // TODO: change order message
     }
     const data = await response.json();
     return data.orders;
@@ -20,12 +20,11 @@ async function getOrders() {
   }
 }
 
-
 interface OrderDrawerProps {
   authenticated: boolean;
 }
 
-export default function OrderDrawer({authenticated}: OrderDrawerProps) {
+export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [orders, setOrders] = useState([]);
 
@@ -40,14 +39,17 @@ export default function OrderDrawer({authenticated}: OrderDrawerProps) {
   }, [authenticated]);
 
   function DrawerHeader() {
-    return(
+    return (
       <div className="flex justify-between">
-          <div className="flex space-x-4">
-          <button className={`text-white ${!authenticated ? "opacity-50" : ""}`} disabled={!authenticated}>
+        <div className="flex space-x-4">
+          <button
+            className={`text-white ${!authenticated ? "opacity-50" : ""}`}
+            disabled={!authenticated}
+          >
             Orders
           </button>
-          </div>
-          <div className="flex items-center">
+        </div>
+        <div className="flex items-center">
           <button
             className={`flex items-center text-gray-400 bg-[#1E1E1E] border border-[#2a2a2a] rounded px-2 py-1 ${
               !authenticated ? "opacity-50" : ""
@@ -64,9 +66,9 @@ export default function OrderDrawer({authenticated}: OrderDrawerProps) {
           >
             ALL STATUSES
           </button>
-          </div>
         </div>
-    )
+      </div>
+    );
   }
 
   return (
@@ -97,46 +99,58 @@ export default function OrderDrawer({authenticated}: OrderDrawerProps) {
 
       {/* Drawer Content */}
       <div className="p-4" onDoubleClick={() => setIsExpanded((prev) => !prev)}>
-        
-        <DrawerHeader/>
+        <DrawerHeader />
 
-        {orders.length === 0 ? (
-        <p className="text-gray-400 mt-4">No orders found</p>
-      ) : (
-        <div className="overflow-x-auto mt-4 max-h-[calc(80vh-60px)] overflow-y-auto">
-          <table className="w-full border-collapse border border-[#2a2a2a] text-white text-sm">
-            <thead className="bg-[#1E1E1E] sticky top-0 z-10">
-              <tr className="bg-[#1E1E1E] text-gray-400">
-                {[
-                  "Product", "Side", "Type", "Created At",
-                  "Executed Value", "Status", "Settled", "Size", "Price", "Cancel After",
-                ].map((header) => (
-                  <th key={header} className="border border-[#2a2a2a] px-2 py-1 text-left">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className="border border-[#2a2a2a]">
-                  <td className="px-2 py-1">{order.product_id}</td>
-                  <td className="px-2 py-1">{order.side}</td>
-                  <td className="px-2 py-1">{order.type}</td>
-                  <td className="px-2 py-1">{order.created_at ?? "N/A"}</td>
-                  <td className="px-2 py-1">{order.executed_value}</td>
-                  <td className="px-2 py-1">{order.status}</td>
-                  <td className="px-2 py-1">{order.settled ? "Yes" : "No"}</td>
-                  <td className="px-2 py-1">{order.size}</td>
-                  <td className="px-2 py-1">{order.price ?? "N/A"}</td>
-                  <td className="px-2 py-1">{order.cancel_after}</td>
+        {/* {orders.length === 0 ? (
+          <p className="text-gray-400 mt-4">No orders found</p>
+        ) : (
+          <div className="overflow-x-auto mt-4 max-h-[calc(80vh-60px)] overflow-y-auto">
+            <table className="w-full border-collapse border border-[#2a2a2a] text-white text-sm">
+              <thead className="bg-[#1E1E1E] sticky top-0 z-10">
+                <tr className="bg-[#1E1E1E] text-gray-400">
+                  {[
+                    "Product",
+                    "Side",
+                    "Type",
+                    "Created At",
+                    "Executed Value",
+                    "Status",
+                    "Settled",
+                    "Size",
+                    "Price",
+                    "Cancel After",
+                  ].map((header) => (
+                    <th
+                      key={header}
+                      className="border border-[#2a2a2a] px-2 py-1 text-left"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id} className="border border-[#2a2a2a]">
+                    <td className="px-2 py-1">{order.product_id}</td>
+                    <td className="px-2 py-1">{order.side}</td>
+                    <td className="px-2 py-1">{order.type}</td>
+                    <td className="px-2 py-1">{order.created_at ?? "N/A"}</td>
+                    <td className="px-2 py-1">{order.executed_value}</td>
+                    <td className="px-2 py-1">{order.status}</td>
+                    <td className="px-2 py-1">
+                      {order.settled ? "Yes" : "No"}
+                    </td>
+                    <td className="px-2 py-1">{order.size}</td>
+                    <td className="px-2 py-1">{order.price ?? "N/A"}</td>
+                    <td className="px-2 py-1">{order.cancel_after}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )} */}
+      </div>
     </motion.div>
   );
 }

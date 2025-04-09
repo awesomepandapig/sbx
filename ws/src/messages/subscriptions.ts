@@ -9,7 +9,7 @@ export async function handleSubscription(
   message: SubscribeMessage | UnsubscribeMessage,
   ws: AuthenticatedWebSocket,
 ): Promise<void> {
-  const { channel, product_ids = [] } = message;
+  const { channel } = message;
 
   const handler = channelHandlers[channel];
   if (!handler) {
@@ -19,5 +19,5 @@ export async function handleSubscription(
 
   const method =
     message.type === 'subscribe' ? handler.subscribe : handler.unsubscribe;
-  await method(ws, new Set(product_ids));
+  await method(ws, message);
 }

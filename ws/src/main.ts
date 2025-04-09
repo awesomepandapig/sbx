@@ -28,9 +28,6 @@ wss.on('connection', function connection(rawWs) {
     }
 
     switch (message.type) {
-      case 'authenticate':
-        await handleAuth(message, ws);
-        break;
       case 'subscribe':
         clearTimeout(timeout);
         await handleSubscription(message, ws);

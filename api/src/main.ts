@@ -1,4 +1,4 @@
-import path from 'path';
+// import path from 'path';
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import { toNodeHandler } from 'better-auth/node';

@@ -6,20 +6,32 @@ use redis::{Commands, Connection, RedisResult};
 use std::cmp::Reverse;
 use std::thread;
 
-// Configuration variables
-const BATCH_SIZE: usize = 100;
-
 fn read_orders_from_stream(
     con: &mut Connection,
-    stream_id: &mut String,
     product_id: &str,
     orders: &mut Vec<Order>,
+    message_ids: &mut Vec<String>,
 ) {
-    let opts: StreamReadOptions =
-        StreamReadOptions::default().count(BATCH_SIZE);
     let stream_name: String = format!("{}:new", product_id);
-    let results: RedisResult<StreamReadReply> =
-        con.xread_options(&[stream_name], &[&stream_id], &opts);
+    let group_name = "matchers";
+    let consumer_name = format!("matcher:{}", product_id);
+
+    // let opts: StreamReadOptions = StreamReadOptions::default().count(1_000_000);
+    // let results: RedisResult<StreamReadReply> =
+    //     con.xread_options(&[stream_name], &[&stream_id], &opts);
+
+    let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
+        .arg("GROUP")
+        .arg(&group_name)
+        .arg(&consumer_name)
+        .arg("BLOCK")
+        .arg(0)
+        .arg("COUNT")
+        .arg(1000)
+        .arg("STREAMS")
+        .arg(&stream_name)
+        .arg(">")
+        .query(con);
 
     // If Redis read fails, log the error and return
     if results.is_err() {
@@ -30,15 +42,17 @@ fn read_orders_from_stream(
     let reply: StreamReadReply = results.unwrap();
     for stream in reply.keys.iter() {
         for entry in stream.ids.iter() {
-            // Update the stream_id to the latest seen ID
-            *stream_id = entry.id.clone();
+            // Collect Redis stream message ID
+            message_ids.push(entry.id.clone());
 
             // Cast each stream entry to an Order
-            if let Ok(order) = Order::from_redis_map(&entry.map) {
-                println!("{:?}", order);
-                orders.push(order);
-            } else {
-                eprintln!("Error parsing order");
+            match Order::from_redis_map(&entry.map) {
+                Ok(order) => orders.push(order),
+                Err(_) => {
+                    eprintln!("Error parsing order");
+                    // Don't acknowledge
+                    message_ids.pop();
+                }
             }
         }
     }
@@ -106,7 +120,6 @@ fn match_orders(
 }
 
 fn matching_engine(product_id: &str) {
-    let mut stream_id: String = String::from("0-0");
     let mut bid_pq: PriorityQueue<Order, i64> = PriorityQueue::new();
     let mut ask_pq: PriorityQueue<Order, Reverse<i64>> = PriorityQueue::new();
 
@@ -115,19 +128,18 @@ fn matching_engine(product_id: &str) {
         redis::Client::open("redis://localhost/0").unwrap();
     let mut con: Connection = client.get_connection().unwrap();
 
-    // let mut i = 0; // TODO: REMOVE
-    // while i < 2 {
     loop {
-        // Read new orders from stream
         let mut orders: Vec<Order> = Vec::new();
+        let mut message_ids: Vec<String> = Vec::new();
+
         read_orders_from_stream(
             &mut con,
-            &mut stream_id,
             &product_id,
             &mut orders,
+            &mut message_ids,
         );
-        for order in orders {
-            // TODO: we should spawn 3 seperate orders for a sized limit order
+
+        for (order, message_id) in orders.into_iter().zip(message_ids.iter()) {
             // Enqueue limit orders into the order book queues
             if order.r#type == "limit" {
                 if order.side == "buy" {
@@ -154,40 +166,41 @@ fn matching_engine(product_id: &str) {
             // Run matching algorithm
             let matches: Vec<Order> = match_orders(&mut bid_pq, &mut ask_pq);
             for matched_order in matches {
-                // Add to Redis stream
+                println!("{:?}", matched_order);
                 let redis_tuples: Vec<(&str, String)> =
                     matched_order.to_redis_tuples();
                 let stream_name: String = format!("{}:matches", product_id);
-                let _result: RedisResult<()> =
+                let _: RedisResult<()> =
                     con.xadd(&[stream_name], "*", &redis_tuples);
             }
-        }
 
-        // i = i + 1; // TODO: REMOVE
+            // Acknowledge the message was processed
+            let stream_name: String = format!("{}:new", product_id);
+            let group_name = "matchers";
+            let _: RedisResult<()> = con.xack(&[stream_name], &[group_name], &[message_id]);
+        }
     }
 }
 
 fn main() {
-    // TODO: for each product in product_ids spawn a new thread
-    // Spawn worker threads with dedicated streams
-    let worker1: thread::JoinHandle<()> =
-        { thread::spawn(move || matching_engine("DRG")) };
-    let worker2: thread::JoinHandle<()> =
-        { thread::spawn(move || matching_engine("FRY")) };
-    let worker3: thread::JoinHandle<()> =
-        { thread::spawn(move || matching_engine("JSP")) };
+    // Create redis connection
+    let client: redis::Client =
+        redis::Client::open("redis://localhost/0").unwrap();
+    let mut con: Connection = client.get_connection().unwrap();
 
-    worker1.join().unwrap();
-    worker2.join().unwrap();
-    worker3.join().unwrap();
+    let products: Vec<String> = con.smembers("product").unwrap();
+    let mut worker_threads: Vec<thread::JoinHandle<()>> = vec![];
+
+    for product in products {
+        let product_id: String = product.clone();
+        let handle: thread::JoinHandle<()> = thread::spawn(move || {
+            matching_engine(&product_id);
+        });
+        worker_threads.push(handle);
+    }
+
+    for worker in worker_threads {
+        let _ = worker.join();
+    }
 }
-/*
-
-
-
-Popping Orders from Redis Streams: Redis streams (XREADGROUP) don't inherently support "popping" in the way a queue does, but you can use XACK to acknowledge processing, and XDEL to delete once safely processed.
-
-Crash Resilience: If the matching engine crashes mid-processing, you can use XPENDING to check unacknowledged messages and retry them safely.
-
-Idempotency: Ensure orders have unique UUIDs and store processed orders in a separate Redis set (or an append-only log) to reject duplicates.
-*/
+// TODO: XPENDING CHECK AT BEGGINING OF MATCHING ENGINE

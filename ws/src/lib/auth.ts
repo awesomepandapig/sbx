@@ -5,13 +5,13 @@ const ISSUER = 'http://localhost:8000';
 const JWKS = jose.createRemoteJWKSet(new URL(JWKS_URL));
 
 export const authenticate = async (
-  token: string,
+  jwt: string,
 ): Promise<{ authenticated: boolean; user_id?: string }> => {
-  if (!token) {
+  if (!jwt) {
     return { authenticated: false };
   }
   try {
-    const { payload } = await jose.jwtVerify(token, JWKS, {
+    const { payload } = await jose.jwtVerify(jwt, JWKS, {
       issuer: ISSUER,
     });
     return { authenticated: true, user_id: payload.sub };

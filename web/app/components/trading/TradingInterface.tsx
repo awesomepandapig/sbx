@@ -101,7 +101,7 @@ const LimitPriceInput: React.FC<LimitPriceInputProps> = ({
             <input
               value={limitPrice}
               onChange={handleInputChange}
-              placeholder="0.00"
+              placeholder="0"
               type="text"
               inputMode="decimal"
               pattern="[0-9]*"
@@ -124,7 +124,7 @@ export default function TradingInterface({
   // State management
   const [side, setSide] = useState<TradeSide>("buy");
   const [orderType, setOrderType] = useState<OrderType>("limit");
-  const [limitPrice, setLimitPrice] = useState("0.00");
+  const [limitPrice, setLimitPrice] = useState("0");
   const [isLimitPriceInputActive, setIsLimitPriceInputActive] = useState(false);
   const limitPriceInputRef = useRef<HTMLInputElement>(null);
   const [orderSize] = useState(1); // Simplified for now
@@ -148,23 +148,23 @@ export default function TradingInterface({
         ? currentPrice * (1 - percentage / 100)
         : currentPrice * (1 + percentage / 100);
 
-    setLimitPrice(adjustment.toFixed(2));
+    setLimitPrice(adjustment.toFixed(0));
   };
 
   const handleMidPrice = () => {
     // For now, using current market price as mid price
-    setLimitPrice(currentMarketPrice.toFixed(2));
+    setLimitPrice(currentMarketPrice.toFixed(0));
   };
 
   const handleBidAskPrice = () => {
     // Simplified: using market price
     // In a real implementation, this would fetch bid/ask from an API
-    setLimitPrice(currentMarketPrice.toFixed(2));
+    setLimitPrice(currentMarketPrice.toFixed(0));
   };
 
   async function createOrder() {
     // Prevent order creation if limit price is 0
-    if (orderType === "limit" && limitPrice === "0.00") return;
+    if (orderType === "limit" && limitPrice === "0") return;
 
     let body: OrderRequest = {
       product_id: `${symbol}`,
@@ -189,7 +189,7 @@ export default function TradingInterface({
 
   const AuthButtons = () => {
     const isOrderButtonDisabled =
-      (orderType === "limit" && limitPrice === "0.00") || !authenticated;
+      (orderType === "limit" && limitPrice === "0") || !authenticated;
 
     return (
       <div className="space-y-2">
@@ -206,7 +206,10 @@ export default function TradingInterface({
             {side === "buy" ? "Buy" : "Sell"}
           </button>
         ) : (
-          <button className="w-full bg-blue-400 text-blue-950 py-2 rounded-full text-sm font-medium" onClick={signIn}>
+          <button
+            className="w-full bg-blue-400 text-blue-950 py-2 rounded-full text-sm font-medium"
+            onClick={signIn}
+          >
             Sign in
           </button>
         )}
@@ -315,7 +318,7 @@ export default function TradingInterface({
           <div className="flex justify-between">
             <span className="text-gray-400">Total</span>
             <span className="text-white">
-              {calculateOrderTotal().toFixed(2)}
+              {calculateOrderTotal().toFixed(0)}
             </span>
           </div>
         </div>

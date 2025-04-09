@@ -34,7 +34,7 @@ export class Order {
   type: 'market' | 'limit';
   created_at: number;
   executed_value: number;
-  status: 'received' | 'open' | 'done';
+  status: 'open' | 'done';
   settled: boolean;
   price?: number;
   cancel_after?: 'min' | 'hour';
@@ -55,7 +55,7 @@ export class Order {
     this.type = data.type;
     this.created_at = Math.floor(Date.now() / 1000);
     this.executed_value = 0;
-    this.status = 'received';
+    this.status = 'open';
     this.settled = false;
     this.size = data.size;
     this.price = data.price;
@@ -95,14 +95,14 @@ export class Order {
   }
 }
 
-export type OrderResponse = {
+export interface OrderResponse {
   id: UUID;
   product_id: string;
   side: 'buy' | 'sell';
   type: 'market' | 'limit';
   created_at: string;
   executed_value: number;
-  status: 'received' | 'open' | 'done';
+  status: 'open' | 'done';
   settled: boolean;
   price?: number;
   cancel_after?: string;

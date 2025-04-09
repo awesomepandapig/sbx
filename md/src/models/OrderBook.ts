@@ -1,17 +1,10 @@
-import { Order } from 'models/index';
+import { Order } from './order';
 
 export interface Update {
   side: 'ask' | 'bid';
   event_time: string;
   price_level: number;
   new_quantity: number;
-}
-
-function roundToBase10(x: number): number {
-  if (x <= 1) return 1;
-  const exponent = Math.floor(Math.log10(x));
-  const base = Math.pow(10, exponent);
-  return Math.ceil(x / base) * base;
 }
 
 export class OrderBook {
@@ -53,10 +46,10 @@ export class OrderBook {
     const lowestAsk = this.getLowestAsk();
 
     const spread = lowestAsk - highestBid;
-    const numRungs = 20;
-    const rawTickSize = spread / numRungs;
+    const depth = 20;
+    const rawTickSize = spread / depth;
     const minTickSize = 1;
-    const tickSize = Math.max(roundToBase10(rawTickSize), minTickSize);
+    const tickSize = Math.max(rawTickSize, minTickSize);
 
     const bidBuckets = new Map<number, number>();
     const askBuckets = new Map<number, number>();
