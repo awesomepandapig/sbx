@@ -102,9 +102,10 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const orderStringified = order.toRedisTuples();
 
     // Add the message to the message stream
+    const streamKey = `product:${order.product_id}:new`;
     const streamId = `${Date.now()}-${sequence_num}`;
     await redisClient.xAdd(
-      `${order.product_id}:new`,
+      streamKey,
       '*', // TODO: streamId
       orderStringified,
     );

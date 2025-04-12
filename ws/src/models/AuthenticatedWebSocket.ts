@@ -9,10 +9,12 @@ export class AuthenticatedWebSocket {
   // Message tracking
   public readonly client_id: string;
   private sequence_num = 0;
+  public subscriptions: Map<string, Set<string>>;
 
   constructor(private ws: WebSocket) {
     this.client_id = randomUUID();
     this.sequence_num = 0;
+    this.subscriptions = new Map();
   }
 
   public sendMessage(channel: string, events: object[]): void {

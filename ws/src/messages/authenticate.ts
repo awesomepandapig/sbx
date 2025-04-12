@@ -1,12 +1,12 @@
-import { authenticate } from '../lib/index';
+import { authenticate } from '../utils/index';
 import { SubscribeMessage, AuthenticatedWebSocket } from '../models/index';
 
 export const handleAuth = async (
   ws: AuthenticatedWebSocket,
-  message: SubscribeMessage
+  message: SubscribeMessage,
 ): Promise<void> => {
   try {
-    if(!message.jwt) {
+    if (!message.jwt) {
       ws.sendError('JWT missing. Closing connection.');
       ws.close();
       return;

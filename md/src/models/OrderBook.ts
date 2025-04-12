@@ -23,7 +23,6 @@ export class OrderBook {
 
     bucket.set(order.id, order);
     this.lastUpdateTime = order.created_at;
-    this.updateSnapshot();
   }
 
   public removeOrder(order: Order) {
@@ -38,25 +37,41 @@ export class OrderBook {
       }
     }
     this.lastUpdateTime = order.created_at;
-    this.updateSnapshot();
   }
 
   public updateSnapshot() {
-    const highestBid = this.getHighestBid();
-    const lowestAsk = this.getLowestAsk();
+    let highestBid = this.getHighestBid();
+    let lowestAsk = this.getLowestAsk();
 
-    const spread = lowestAsk - highestBid;
+    if (highestBid === 0 && lowestAsk === 0) return;
+
+    if (highestBid === 0) highestBid = lowestAsk;
+    if (lowestAsk === 0) lowestAsk = highestBid;
+
+    // Calculate tick size
+    const spread = Math.max(1, lowestAsk - highestBid);
     const depth = 20;
-    const rawTickSize = spread / depth;
-    const minTickSize = 1;
-    const tickSize = Math.max(rawTickSize, minTickSize);
 
+    
+    let tickSize = Math.max(1, Math.ceil(spread / depth));
+
+    // Skip bucketing when order count is low
+    if (this.bids.size + this.asks.size < 20) {
+      tickSize = 1;
+    }    
+
+    // Pre-allocate arrays for better performance
+    const updates: Update[] = [];
+
+    // Process bids (use a more efficient algorithm)
+    const bidPrices = Array.from(this.bids.keys()).sort((a, b) => b - a);
     const bidBuckets = new Map<number, number>();
-    const askBuckets = new Map<number, number>();
 
     // Aggregate bids
-    for (const [price, orders] of this.bids) {
+    for (const price of bidPrices) {
       const bucket = Math.floor(price / tickSize) * tickSize;
+      const orders = this.bids.get(price);
+      if (!orders) continue;
 
       // Aggregate the total size of orders in this bucket
       let totalSize = 0;
@@ -67,29 +82,27 @@ export class OrderBook {
       bidBuckets.set(bucket, (bidBuckets.get(bucket) ?? 0) + totalSize);
     }
 
+    // Process bids (use a more efficient algorithm)
+    const askPrices = Array.from(this.asks.keys()).sort((a, b) => b - a);
+    const askBuckets = new Map<number, number>();
+
     // Aggregate asks
-    for (const [price, orders] of this.asks) {
-      const bucket = Math.ceil(price / tickSize) * tickSize;
+    for (const price of askPrices) {
+      const bucket = Math.floor(price / tickSize) * tickSize;
+      const orders = this.asks.get(price);
+      if (!orders) continue;
+
+      // Aggregate the total size of orders in this bucket
       let totalSize = 0;
       for (const order of orders.values()) {
         totalSize += order.size;
       }
+
       askBuckets.set(bucket, (askBuckets.get(bucket) ?? 0) + totalSize);
     }
 
-    const updates: Update[] = [];
-
-    // Sort the orders
-    const sortedBids = Array.from(bidBuckets.entries()).sort(
-      (a, b) => b[0] - a[0],
-    );
-
-    // Sort asks (lowest first)
-    const sortedAsks = Array.from(askBuckets.entries()).sort(
-      (a, b) => a[0] - b[0],
-    );
-
-    for (const [price, size] of sortedBids) {
+    // Create updates from buckets
+    for (const [price, size] of bidBuckets) {
       updates.push({
         side: 'bid',
         price_level: price,
@@ -98,7 +111,7 @@ export class OrderBook {
       });
     }
 
-    for (const [price, size] of sortedAsks) {
+    for (const [price, size] of askBuckets) {
       updates.push({
         side: 'ask',
         price_level: price,
@@ -124,43 +137,127 @@ export class OrderBook {
     return this.snapshot;
   }
 
+  /*
+
+  export interface Update {
+    side: 'ask' | 'bid';
+    event_time: string;
+    price_level: number;
+    new_quantity: number;
+  }
+  */
+
   // TODO: READ
   public getDiffs(current: Update[], previous: Update[]): Update[] {
-    // Create maps for faster lookups
-    const previousMap = new Map<string, Update>();
+    const diffs: Update[] = [];
+    const event_time = new Date(this.lastUpdateTime).toISOString();
+
+    const previousBids = new Map<number, number>();
+    const previousAsks = new Map<number, number>();
+
     for (const update of previous) {
-      previousMap.set(`${update.side}-${update.price_level}`, update);
-    }
-
-    const currentMap = new Map<string, Update>();
-    for (const update of current) {
-      currentMap.set(`${update.side}-${update.price_level}`, update);
-    }
-
-    const changes: Update[] = [];
-
-    // Check for new or modified price levels
-    for (const [key, update] of currentMap.entries()) {
-      const previousUpdate = previousMap.get(key);
-      if (
-        !previousUpdate ||
-        previousUpdate.new_quantity !== update.new_quantity
-      ) {
-        changes.push(update);
+      if(update.side === 'bid') {
+        previousBids.set(update.price_level, update.new_quantity);
+      } else {
+        previousAsks.set(update.price_level, update.new_quantity);
       }
     }
 
-    // Check for removed price levels
-    for (const [key, update] of previousMap.entries()) {
-      if (!currentMap.has(key)) {
-        changes.push({
+    const currentBids = new Map<number, number>();
+    const currentAsks = new Map<number, number>();
+
+    for (const update of current) {
+      if (update.side === 'bid') {
+        currentBids.set(update.price_level, update.new_quantity);
+      } else {
+        currentAsks.set(update.price_level, update.new_quantity);
+      }
+    }
+    
+    // // Counterparty collision logic
+
+    // // If there is one bid or one ask
+    // if (
+    //   (previousBids.size === 1 ||
+    //   previousAsks.size === 1) &&
+    //   (currentBids.size === 1 ||
+    //   currentAsks.size === 1)
+    // ) {
+
+    //   // Check if the price cancels the other
+    //   const [currentBid] = currentBids.keys();
+    //   const [previousBid] = previousBids.keys();
+    //   const [currentAsk] = currentAsks.keys();
+    //   const [previousAsk] = previousAsks.keys();
+
+    //   // If a new bid cancels the previous ask
+    //   if (
+    //     typeof currentBid === 'number' &&
+    //     typeof previousAsk === 'number' &&
+    //     currentBid >= previousAsk
+    //   ) {
+    //     diffs.push({
+    //       side: 'ask',
+    //       price_level: previousAsk,
+    //       new_quantity: 0,
+    //       event_time,
+    //     });
+    //     previousAsks.delete(previousAsk);
+    //   }
+
+    //   // If a new ask cancels the previous bid
+    //   if (
+    //     typeof currentAsk === 'number' &&
+    //     typeof previousBid === 'number' &&
+    //     currentAsk <= previousBid
+    //   ) {
+    //     diffs.push({
+    //       side: 'bid',
+    //       price_level: previousBid,
+    //       new_quantity: 0,
+    //       event_time,
+    //     });
+    //     previousBids.delete(previousBid);
+    //   }
+    // }
+  
+    // Compare current snapshot with previous
+    for (const update of current) {
+      let previousQty = 0;
+      if (update.side === 'bid') {
+        previousQty = previousBids.get(update.price_level) || 0;
+        previousBids.delete(update.price_level);
+      } else {
+        previousQty = previousAsks.get(update.price_level) || 0;
+        previousAsks.delete(update.price_level);
+      }
+  
+      if (previousQty !== update.new_quantity) {
+        diffs.push({
           ...update,
-          new_quantity: 0, // Price level removed
-          event_time: new Date(this.lastUpdateTime).toISOString(),
+          event_time,
         });
       }
     }
+    
+    for (const [price, _] of previousBids) {
+      diffs.push({
+        side: 'bid',
+        price_level: price,
+        new_quantity: 0,
+        event_time,
+      });
+    }
 
-    return changes;
+    for (const [price, _] of previousAsks) {
+      diffs.push({
+        side: 'ask',
+        price_level: price,
+        new_quantity: 0,
+        event_time,
+      });
+    }
+  
+    return diffs;
   }
 }

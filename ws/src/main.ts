@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
-import { MessageSchema, AuthenticatedWebSocket } from './models/index';
-import { handleAuth, handleSubscription } from './messages/index';
+import { Message, MessageSchema, AuthenticatedWebSocket } from './models/index';
+import { handleSubscribe, handleUnsubscribe } from './messages/index';
 import { channelHandlers } from './channels/index';
 
 const PORT = 8080;
@@ -17,7 +17,7 @@ wss.on('connection', function connection(rawWs) {
   }, 5000);
 
   ws.on('message', async function message(data) {
-    let message;
+    let message: Message;
     try {
       message = MessageSchema.parse(JSON.parse(data.toString()));
     } catch (error: unknown) {
@@ -30,10 +30,10 @@ wss.on('connection', function connection(rawWs) {
     switch (message.type) {
       case 'subscribe':
         clearTimeout(timeout);
-        await handleSubscription(message, ws);
+        await handleSubscribe(message, ws);
         break;
       case 'unsubscribe':
-        await handleSubscription(message, ws);
+        await handleUnsubscribe(message, ws);
         break;
       default:
         ws.sendError('Unknown message type.');

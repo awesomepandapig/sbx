@@ -4,28 +4,26 @@ import { OrderBook, Order } from './models/index';
 const OrderBooks = new Map<string, OrderBook>();
 const orderStreamIds = new Map<string, string>();
 const matchStreamIds = new Map<string, string>();
+const dirtyFlags = new Map<string, boolean>();
 
 async function readFromStream(
   productId: string,
   suffix: string,
   streamIdMap: Map<string, string>,
 ) {
-  const streamKey = `${productId}:${suffix}`;
+  const streamKey = `product:${productId}:${suffix}`;
   const lastSeenId = streamIdMap.get(productId) ?? '0-0';
 
   const result = await redisClient.xRead(
-    [{ key: streamKey, id: lastSeenId }],
-    { COUNT: 1000, BLOCK: 1 }
+    [{ key: streamKey, id: lastSeenId }]
   );
   if (!result?.length) {
-    console.log(`(${streamKey}) Waiting for new messages`);
     return null;
   }
 
   const stream = result[0];
   const lastId = stream.messages.at(-1)?.id;
   if (lastId) {
-    console.log(`Updating stream ID for ${productId}: ${lastId}`);
     streamIdMap.set(productId, lastId);
   }
 
@@ -35,6 +33,9 @@ async function readFromStream(
 async function processNewOrders(productId: string) {
   const messages = await readFromStream(productId, 'new', orderStreamIds);
   if (!messages) return;
+
+  console.log(`[${productId}] processNewMatches called, got ${messages ? messages.length : 0} messages`);
+
   const book = OrderBooks.get(productId);
   if (!book) return;
 
@@ -42,12 +43,19 @@ async function processNewOrders(productId: string) {
     const order = new Order(message);
     book.addOrder(order);
   }
+
+  dirtyFlags.set(productId, true);
 }
 
 async function processNewMatches(productId: string) {
-  const messages = await readFromStream(productId, 'matches', matchStreamIds);
-
+  const messages = await readFromStream(productId, 'match', matchStreamIds);
   if (!messages) return;
+
+  const streamKey = `product:${productId}:user`;
+  const payload = messages.map((entry) => entry.message);
+
+  await redisClient.publish(streamKey, JSON.stringify(payload));
+
   const book = OrderBooks.get(productId);
   if (!book) return;
 
@@ -55,24 +63,36 @@ async function processNewMatches(productId: string) {
     const order = new Order(message);
     book.removeOrder(order);
   }
+
+  dirtyFlags.set(productId, true);
+}
+
+async function level2updates() {
+
 }
 
 async function broadcastUpdates(productId: string) {
+  if (!dirtyFlags.get(productId)) return;
+
   const book = OrderBooks.get(productId);
   if (!book) return;
 
+  
   const snapshotKey = `snapshot`;
+  book.updateSnapshot();
   const currentSnapshot = book.getSnapshot();
+
   const previousRaw = await redisClient.hGet(snapshotKey, productId);
   const previousSnapshot = previousRaw ? JSON.parse(previousRaw) : [];
 
   const diffs = book.getDiffs(currentSnapshot, previousSnapshot);
   if (diffs.length === 0) return;
 
-  // console.log(diffs); // TODO:
+  console.log(`Publishing ${diffs.length} updates for ${productId}`);
 
+  const streamKey = `product:${productId}:l2_data`;
   await redisClient.publish(
-    `${productId}:updates`,
+    streamKey,
     JSON.stringify({
       type: 'update',
       product_id: productId,
@@ -84,31 +104,55 @@ async function broadcastUpdates(productId: string) {
     productId,
     JSON.stringify(currentSnapshot),
   );
+
+  dirtyFlags.set(productId, false);
 }
 
 async function processAllProducts() {
-  for (const productId of activeProducts) {
-    // Register new products while running
+  const tasks = Array.from(activeProducts).map(async (productId) => {
     if (!OrderBooks.has(productId)) {
       OrderBooks.set(productId, new OrderBook());
     }
     await processNewOrders(productId);
     await processNewMatches(productId);
     await broadcastUpdates(productId);
-  }
+  });
+
+  await Promise.all(tasks);
 }
 
 async function main() {
-  while (true) {
-    try {
-      await processAllProducts();
-    } catch (error) {
-      console.error('Error in loop:', error);
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
+  setInterval(async () => {
+    await processAllProducts();
+  }, 100);
 }
 
 (async () => {
   await main();
 })();
+
+
+
+/*
+
+interface Event {
+    type: 'snapshot';
+    tickers: Ticker[];
+}
+
+interface Ticker {
+    type: 'ticker',
+    product_id: string,
+    price: string
+    volume_24_h: string,
+    low_24_h: string,
+    high_24_h: string,
+    low_52_w: string,
+    high_52_w: string,
+    price_percent_chg_24_h: string,
+    best_bid: string,
+    best_bid_quantity: string,
+    best_ask: string,
+    best_ask_quantity: string
+}
+  */

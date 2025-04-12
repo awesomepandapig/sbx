@@ -19,6 +19,8 @@ export default function Trade() {
     });
   }
 
+  // TODO: Validate symbol
+
   const { user } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 

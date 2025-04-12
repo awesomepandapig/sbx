@@ -15,7 +15,7 @@ export const SubscribeMessageSchema = BaseMessageSchema.extend({
   type: z.literal(MessageType.SUBSCRIBE),
   product_ids: z.array(productSchema),
   channel: z.string(),
-  jwt: z.string().optional()
+  jwt: z.string().optional(),
 });
 
 // Unsubscribe message we send product_ids and channels to unsubscribe from

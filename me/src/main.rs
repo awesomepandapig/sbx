@@ -12,20 +12,16 @@ fn read_orders_from_stream(
     orders: &mut Vec<Order>,
     message_ids: &mut Vec<String>,
 ) {
-    let stream_name: String = format!("{}:new", product_id);
+    let stream_name: String = format!("product:{}:new", product_id);
     let group_name = "matchers";
     let consumer_name = format!("matcher:{}", product_id);
-
-    // let opts: StreamReadOptions = StreamReadOptions::default().count(1_000_000);
-    // let results: RedisResult<StreamReadReply> =
-    //     con.xread_options(&[stream_name], &[&stream_id], &opts);
 
     let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
         .arg("GROUP")
         .arg(&group_name)
         .arg(&consumer_name)
         .arg("BLOCK")
-        .arg(0)
+        .arg(50)
         .arg("COUNT")
         .arg(1000)
         .arg("STREAMS")
@@ -39,7 +35,14 @@ fn read_orders_from_stream(
         return;
     }
 
-    let reply: StreamReadReply = results.unwrap();
+    let reply = match results {
+        Ok(reply) => reply,
+        Err(err) => {
+            eprintln!("Redis stream read failed: {}", err);
+            return;
+        }
+    };
+
     for stream in reply.keys.iter() {
         for entry in stream.ids.iter() {
             // Collect Redis stream message ID
@@ -169,15 +172,19 @@ fn matching_engine(product_id: &str) {
                 println!("{:?}", matched_order);
                 let redis_tuples: Vec<(&str, String)> =
                     matched_order.to_redis_tuples();
-                let stream_name: String = format!("{}:matches", product_id);
+                let stream_name: String = format!("product:{}:match", product_id);
                 let _: RedisResult<()> =
                     con.xadd(&[stream_name], "*", &redis_tuples);
+                // Delete the message
+                let stream_name: String = format!("product:{}:new", product_id);
+                let _: RedisResult<()> = con.xdel(&[stream_name], &[message_id]);
             }
 
-            // Acknowledge the message was processed
-            let stream_name: String = format!("{}:new", product_id);
+            // Acknowledge the message
+            let stream_name: String = format!("product:{}:new", product_id);
             let group_name = "matchers";
-            let _: RedisResult<()> = con.xack(&[stream_name], &[group_name], &[message_id]);
+            let stream_name_str = stream_name.as_str();
+            let _: RedisResult<()> = con.xack(&[stream_name_str], &[group_name], &[message_id]);
         }
     }
 }

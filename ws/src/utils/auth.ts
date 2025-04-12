@@ -16,7 +16,6 @@ export const authenticate = async (
     });
     return { authenticated: true, user_id: payload.sub };
   } catch (error) {
-    console.log(error);
     return { authenticated: false };
   }
 };
