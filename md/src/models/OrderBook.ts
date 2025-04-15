@@ -12,6 +12,23 @@ export class OrderBook {
   private asks = new Map<number, Map<string, Order>>();
   private snapshot: Update[] = [];
   private lastUpdateTime: number = Date.now();
+  
+  private volumeStartTime: number;
+  private volume24h: number = 0;
+  private bestBid: number = 0;
+  private bestAsk: number = 0;
+  private high24h: number = 0;
+  private low24h: number = 0;
+  private openPrice24h: number = 0;
+  private lastPrice: number = 0;
+
+  constructor() {
+    this.volumeStartTime = this.getDayStart(Date.now());
+  }
+  
+  private getDayStart(timestamp: number): number {
+    return new Date(timestamp).setHours(0, 0, 0, 0);
+  }
 
   public addOrder(order: Order) {
     const priceMap = order.side === 'buy' ? this.bids : this.asks;
@@ -40,16 +57,17 @@ export class OrderBook {
   }
 
   public updateSnapshot() {
-    let highestBid = this.getHighestBid();
-    let lowestAsk = this.getLowestAsk();
+    let bestBid = this.getBestBid();
+    let bestAsk = this.getBestAsk();
+    const event_time = new Date(this.lastUpdateTime).toISOString();
 
-    if (highestBid === 0 && lowestAsk === 0) return;
+    if (bestBid === 0 && bestAsk === 0) return;
 
-    if (highestBid === 0) highestBid = lowestAsk;
-    if (lowestAsk === 0) lowestAsk = highestBid;
+    if (bestBid === 0) bestBid = bestAsk;
+    if (bestAsk === 0) bestAsk = bestBid;
 
     // Calculate tick size
-    const spread = Math.max(1, lowestAsk - highestBid);
+    const spread = Math.max(1, bestAsk - bestBid);
     const depth = 20;
 
     
@@ -107,7 +125,7 @@ export class OrderBook {
         side: 'bid',
         price_level: price,
         new_quantity: size,
-        event_time: new Date(this.lastUpdateTime).toISOString(),
+        event_time: event_time,
       });
     }
 
@@ -116,38 +134,86 @@ export class OrderBook {
         side: 'ask',
         price_level: price,
         new_quantity: size,
-        event_time: new Date(this.lastUpdateTime).toISOString(),
+        event_time: event_time,
       });
     }
 
     this.snapshot = updates;
   }
 
-  public getHighestBid(): number {
-    if (this.bids.size === 0) return 0;
-    return Math.max(...Array.from(this.bids.keys()));
+  public updateBestPrices(): void {
+    this.bestBid = this.bids.size > 0 ? Math.max(...Array.from(this.bids.keys())) : 0;
+    this.bestAsk = this.asks.size > 0 ? Math.min(...Array.from(this.asks.keys())) : 0;
   }
 
-  public getLowestAsk(): number {
-    if (this.asks.size === 0) return 0;
-    return Math.min(...Array.from(this.asks.keys()));
+  public getBestBid(): number {
+    return this.bestBid;
   }
+  
+  public getBestAsk(): number {
+    return this.bestAsk;
+  }
+
+  public getQty(side: string, price_level: number): number {
+    const priceMap = side === 'buy' ? this.bids : this.asks;
+    const bucket = priceMap.get(price_level);
+    return bucket ? bucket.size : 0;
+  }
+
+  public updatePriceData(order: Order): void {
+    const currentTimestamp = order.created_at;
+    const currentPrice = order.price;
+    this.lastPrice = currentPrice;
+    
+    // Reset 24h data if we've crossed to a new day
+    const currentDayStart = this.getDayStart(currentTimestamp);
+    if (currentDayStart > this.volumeStartTime) {
+      this.volumeStartTime = currentDayStart;
+      this.volume24h = 0;
+      this.high24h = currentPrice;
+      this.low24h = currentPrice;
+      this.openPrice24h = currentPrice;
+    }
+
+    // Update high/low
+    if (currentPrice > this.high24h) this.high24h = currentPrice;
+    if (this.low24h === 0 || currentPrice < this.low24h) this.low24h = currentPrice;
+
+    this.volume24h += order.executed_value;
+  }
+
+  public getTickerData(): {
+    price: number,
+    volume_24h: number,
+    low_24h: number,
+    high_24h: number,
+    price_percent_chg_24h: number,
+    best_bid: number,
+    best_ask: number
+  } {
+    let percentChange = 0;
+    if (this.openPrice24h > 0) {
+      const priceDifference = this.lastPrice - this.openPrice24h;
+      const relativeDifference = priceDifference / this.openPrice24h;
+      percentChange = relativeDifference * 100;
+    }
+    
+    return {
+      price: this.lastPrice,
+      volume_24h: this.volume24h,
+      low_24h: this.low24h,
+      high_24h: this.high24h,
+      price_percent_chg_24h: percentChange,
+      best_bid: this.bestBid,
+      best_ask: this.bestAsk
+    };
+  }
+
 
   public getSnapshot(): Update[] {
     return this.snapshot;
   }
 
-  /*
-
-  export interface Update {
-    side: 'ask' | 'bid';
-    event_time: string;
-    price_level: number;
-    new_quantity: number;
-  }
-  */
-
-  // TODO: READ
   public getDiffs(current: Update[], previous: Update[]): Update[] {
     const diffs: Update[] = [];
     const event_time = new Date(this.lastUpdateTime).toISOString();

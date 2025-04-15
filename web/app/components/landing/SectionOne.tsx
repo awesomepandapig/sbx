@@ -1,6 +1,7 @@
 import Card from "./Card";
 import { Heart } from "lucide-react";
 import PartyInvite from "./PartyInvite";
+import AutoScrollingCarousel from "./Carousel";
 
 export default function SectionOne() {
   const sectionStyle = {
@@ -30,7 +31,7 @@ export default function SectionOne() {
           width="w-7/12"
           textPosition="left"
         >
-          <p>replace with carousel</p>
+          <AutoScrollingCarousel />
         </Card>
 
         <Card

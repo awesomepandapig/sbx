@@ -6,3 +6,4 @@ edition = '2024'
 [dependencies]
 redis = { version = "0.29.1", features = [] }
 priority-queue = "2.3.0"
+slab = "0.4.9"

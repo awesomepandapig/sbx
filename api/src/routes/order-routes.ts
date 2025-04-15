@@ -4,6 +4,9 @@ import { validateProduct } from '../models/product';
 import { Order, OrderSchema, OrderResponse } from 'models/order';
 import { z } from 'zod';
 import { activeProducts, redisClient } from '../config/index';
+import { order as OrderTable } from '../db/schema'
+import { db } from '../db/index';
+import { createInsertSchema } from 'drizzle-zod';
 
 const router = express.Router();
 
@@ -62,8 +65,6 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 // Create a new order
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
-    // Validate user input
-
     const data = OrderSchema.parse(req.body);
 
     
@@ -98,6 +99,11 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     //   return;
     // }
 
+    
+    
+    
+
+    // Create new order
     const order = new Order({ ...data, user_id: userId });
     const orderStringified = order.toRedisTuples();
 
@@ -111,16 +117,29 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     );
     sequence_num++;
 
-    // Cache the message in Redis for O(1) metadata lookups
-    // TODO: SET IN DB INSTEAD OF REDIS
-    // await redisClient.hSet(`order:${order.id}`, orderStringified); 
-
-    // Cache the message id for O(1) Per-User Order Retrieval
-    // TODO: SET IN DB INSTEAD OF REDIS
-    // await redisClient.sAdd(
-    //   `user:${order.user_id}:order:${order.product_id}`,
-    //   order.id,
-    // );
+    // TODO: Add order to db
+    // function dbOrderFromOrder(order: Order) {
+    //   return {
+    //     id: order.id,
+    //     product_id: order.product_id,
+    //     user_id: order.user_id,
+    //     side: order.side,
+    //     type: order.type,
+    //     created_at: order.created_at, // assuming `created_at` is a UNIX timestamp
+    //     executed_value: order.executed_value.toString(), // Drizzle uses string for numeric
+    //     status: order.status,
+    //     settled: order.settled,
+    //     price: order.price?.toString(),
+    //     cancel_after: order.cancel_after,
+    //     size: order.size.toString(),
+    //   };
+    // }
+    // const orderInsertSchema = createInsertSchema(OrderTable);
+    // console.log(order);
+    // const dataParsed = dbOrderFromOrder(order);
+    // console.log(dataParsed);
+    // const dbOrder = await db.insert(OrderTable).values(dataParsed);
+    // console.log(dbOrder);
 
     // // Update the active order count in Redis
     // if (order.side === 'sell') {

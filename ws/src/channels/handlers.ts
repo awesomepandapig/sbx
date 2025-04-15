@@ -1,6 +1,5 @@
 import { activeProducts, waitForRedis } from '../config/index';
-import { Level2Channel } from '../models/Level2Channel';
-import { UserChannel } from '../models/UserChannel';
+import { UserChannel, Level2Channel, TickerChannel } from '../models/index';
 import { handleAuth } from 'messages';
 
 import type {
@@ -32,14 +31,26 @@ async function initUser() {
   return UserChannel.initialize(channels);
 }
 
+async function initTicker() {
+  await waitForRedis();
+  const channels = Array.from(activeProducts).map((id) => `product:${id}:ticker`);
+  return TickerChannel.initialize(channels);
+}
+
 const level2 = await initLevel2();
 const user = await initUser();
+const ticker = await initTicker();
 
 export const channelHandlers: Record<string, ChannelHandler> = {
   level2: {
     subscribe: (...args) => level2.subscribe(...args),
     unsubscribe: (...args) => level2.unsubscribe(...args),
     cleanup: (...args) => level2.cleanup(...args),
+  },
+  ticker: {
+    subscribe: (...args) => ticker.subscribe(...args),
+    unsubscribe: (...args) => ticker.unsubscribe(...args),
+    cleanup: (...args) => ticker.cleanup(...args),
   },
   user: {
     subscribe: async (ws, msg) => {

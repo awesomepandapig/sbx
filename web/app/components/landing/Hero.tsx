@@ -1,6 +1,4 @@
 import TickerCard from "./TickerCard";
-import { getSession, signIn } from "~/lib/auth";
-import { DOMAIN } from "~/lib/config";
 
 const marketData = [
   {
@@ -35,36 +33,37 @@ const marketData = [
   },
 ];
 
-interface HeroProps {
-  authenticated: boolean;
-}
-
-export default function Hero({ authenticated }: HeroProps) {
-  async function getStarted() {
-    if (authenticated) {
-      window.location.href = `${DOMAIN}/trade/FRY`;
-    } else {
-      signIn();
-    }
-  }
-
+export default function Hero() {
   return (
-    <div className="w-full flex justify-center mt-28">
+    <div
+      className="w-full py-24"
+      style={{
+        backgroundImage: `
+    radial-gradient(
+      ellipse 100% 70% at center,
+      oklch(28.2% 0.091 267.935) 0%,
+      #030105 70%
+    )
+  `,
+      }}
+    >
       <div className="z-0 flex flex-col items-center text-left mb-16">
-        <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight mb-6">
+        {/* <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6">
           Skyblock<span className="text-blue-500">.</span>Exchange
-        </h1>
-        <p className="text-xl text-gray-400 max-w-2xl mb-8">
-          A real-time marketplace for Skyblock structures
+        </h1> */}
+        <p className="text-6xl text-white max-w-2xl mb-8 text-center font-extralight">
+          Real-time Marketplace <br />
+          for SkyBlock Structures
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
+          <a href="/trade/JSP">
           <button
-            className="bg-blue-600 hover:bg-blue-700/80 h-12 text-white px-4 py-2 rounded-xl duration-300"
-            onClick={getStarted}
+            className="duration-300 border border-blue-600 hover:bg-blue-700/80 h-12 text-white px-4 py-2 rounded-full shadow-[0_0_12px_#3b82f6]"
+            
           >
-            Get Started
-          </button>
-          <button className="border bg-[rgba(38,38,38,.7)] border-gray-700 hover:bg-gray-700/80 duration-300 h-12 text-white px-4 py-2 rounded-xl">
+            Start Trading
+          </button></a>
+          <button className="border bg-[rgba(38,38,38,.7)] border-gray-700 hover:bg-gray-700/80 duration-300 h-12 text-white px-4 py-2 rounded-full">
             Explore Docs
           </button>
         </div>

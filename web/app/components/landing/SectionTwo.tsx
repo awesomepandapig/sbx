@@ -89,7 +89,7 @@ export default function SectionTwo() {
             }}
             aria-hidden="true"
           >
-            <code>
+            <code className="text-xs">
               &#123; time:'2025-03-21', value:91.72 &#125;, &#123;
               time:'2025-03-21', value:18.23 &#125;, &#123; time:'2025-03-21',
               value:63.20 &#125;, &#123; time:'2025-03-21', value:70.56 &#125;,

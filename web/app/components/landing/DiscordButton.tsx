@@ -1,20 +1,38 @@
+import { useState, useEffect } from "react";
 import { signIn } from "~/lib/auth";
-import { DOMAIN } from "~/lib/config";
+import { API_URL, DOMAIN } from "~/lib/config";
+import { useNavigate } from "@remix-run/react";
 
-interface DiscordButtonProps {
-  authenticated: boolean;
-}
+export default function DiscordButton() {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<null | any>(null);
 
-export default function DiscordButton({ authenticated }: DiscordButtonProps) {
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const response = await fetch(`${API_URL}/auth/get-session`, {
+          credentials: "include",
+        });
+        if (!response.ok) throw new Error("Request failed");
+        const data = await response.json();
+        setSession(data);
+      } catch {
+        setSession(null);
+      }
+    }
+
+    checkSession();
+  }, []);
+
   return (
     <button
       className="h-10 flex justify-center items-center border text-sm border-[rgba(82,82,82,0.7)] text-white bg-[#2b2b2b] px-6 py-2 rounded-full transition-all duration-300 ease-in-out hover:filter hover:drop-shadow-[0_0_10px_rgba(88,101,242,0.7)]"
       aria-label="Sign in with Discord"
       onClick={() => {
-        if (authenticated) {
-          window.location.href = `${DOMAIN}/trade/FRY`;
+        if (session) {
+          navigate(`/trade/JSP`);
         } else {
-          signIn();
+          signIn(`${DOMAIN}/trade/JSP`);
         }
       }}
       type="button"

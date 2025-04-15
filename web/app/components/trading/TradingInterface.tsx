@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent, useRef, useEffect } from "react";
 import { signIn } from "~/lib/auth";
-import { API_URL } from "~/lib/config";
+import { API_URL, DOMAIN } from "~/lib/config";
 
 interface TradingInterfaceProps {
   symbol: string;
@@ -200,7 +200,7 @@ export default function TradingInterface({
                 ? "bg-gray-500/50 text-gray-500 cursor-not-allowed"
                 : "bg-blue-400 text-blue-950"
             }`}
-            onClick={createOrder}
+            onClick={() => createOrder}
             disabled={isOrderButtonDisabled}
           >
             {side === "buy" ? "Buy" : "Sell"}
@@ -208,7 +208,7 @@ export default function TradingInterface({
         ) : (
           <button
             className="w-full bg-blue-400 text-blue-950 py-2 rounded-full text-sm font-medium"
-            onClick={signIn}
+            onClick={() => signIn(`${DOMAIN}/trade/${symbol}`)}
           >
             Sign in
           </button>

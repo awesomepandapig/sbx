@@ -2,19 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Shield } from "lucide-react";
+import { useNavigate, useLoaderData } from "@remix-run/react";
 import { API_URL } from "~/lib/config";
-import { useNavigate } from "@remix-run/react";
+import { requireUserSession } from "~/lib/auth";
 
 // TODO: PROTECT PAGE DISALLOW USE FOR USERS WITHOUT VALID SESSIONS
 
+export const loader = requireUserSession;
+
 export default function VerifyIgnPage() {
-  const navigate = useNavigate();
   const [ign, setIgn] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "error">("idle");
   const [submitted, setSubmitted] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   //   const router = useRouter()
+
+  useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Trigger the completion animation after a short delay
@@ -44,7 +49,7 @@ export default function VerifyIgnPage() {
       }
 
       const result = await response.json();
-      navigate("/dashboard");
+      navigate("/trade/JSP");
     } catch {
       setStatus("error");
     } finally {

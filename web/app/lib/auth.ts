@@ -28,16 +28,12 @@ export async function getSession(cookie: string | null) {
   }
 }
 
-export async function requireUserSession(request: Request) {
-  const cookie = request.headers.get("Cookie");
-  const session = await getSession(cookie);
-  if (!session || !session.user) {
-    throw redirect("/", 302);
-  }
-  return session.user;
-}
+export async function signIn(callbackURL?: string) {
 
-export async function signIn() {
+  if(!callbackURL) {
+    callbackURL = `${DOMAIN}/trade/JSP`;
+  }
+
   try {
     const response = await fetch(`${API_URL}/auth/sign-in/social`, {
       method: "POST",
@@ -46,8 +42,8 @@ export async function signIn() {
       },
       body: JSON.stringify({
         provider: "discord",
-        newUserCallbackURL: "/verify",
-        callbackURL: `${DOMAIN}/trade/FRY`, // TODO: CHANGE CALLBACK URL TO URL PARAM ie /trade/JSP etc.
+        newUserCallbackURL: `${DOMAIN}/verify-ign`,
+        callbackURL  
       }),
     });
     if (!response.ok) {
@@ -75,27 +71,37 @@ export async function signOut() {
       credentials: "include",
       body: JSON.stringify({}),
     });
+    window.location.href = DOMAIN;
+
     if (!response.ok) {
       throw new Error("something went wrong"); // TODO: error message
     }
-    window.location.href = `${DOMAIN}`;
   } catch (error) {
     console.log(error); //TODO: handle error
   }
 }
 
-export async function authLoader({ request }: LoaderFunctionArgs) {
+export async function requireUserSession({request}: LoaderFunctionArgs) {
   try {
     const cookie = request.headers.get("Cookie");
     const session = await getSession(cookie);
-
-    if (session && session.user) {
-      return { user: session.user };
+    if (!session) {
+      throw redirect("/", 302);
     }
-
-    return { user: null };
+    return session.get("user");
   } catch (error) {
-    console.error("Error in loader:", error);
-    return { user: null };
+    throw redirect("/", 302);
+  }
+  
+}
+
+export async function getUserSession({request}: LoaderFunctionArgs) { 
+  try {
+    const cookie = request.headers.get("Cookie");
+    const session = await getSession(cookie);
+    const user = session.user;
+    return user;
+  } catch(error) {
+    return null
   }
 }

@@ -4,20 +4,24 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronUp } from "lucide-react";
 import { API_URL } from "~/lib/config";
+import { WS_URL } from "~/lib/config";
 
-async function getOrders() {
+// import activeProducts
+
+const activeProducts = ["JSP", "DRG", "FRY"];
+
+async function getToken() {
   try {
-    const response = await fetch(`${API_URL}/orders`, {
+    const result = await fetch(`${API_URL}/auth/token`, {
       credentials: "include",
     });
-    if (!response.ok) {
-      throw new Error("unable to get orders"); // TODO: change order message
+    if (!result.ok) {
+      throw new Error("Authentication failed");
     }
-    const data = await response.json();
-    return data.orders;
-  } catch (error) {
-    console.error(error); // TODO: handle error
-  }
+
+    const data = await result.json();
+    return data.token;
+  } catch (error) {}
 }
 
 interface OrderDrawerProps {
@@ -27,16 +31,55 @@ interface OrderDrawerProps {
 export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState(activeProducts);
+
+  async function createSocket(jwt: string) {
+    const ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          product_ids: selectedProducts,
+          channel: "user",
+          jwt: jwt,
+        }),
+      );
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // if (!data || data.channel !== "user") return;
+
+      // const events = data.events;
+      // if (!events) return;
+
+      // console.log(events);
+      console.log(data);
+
+      // if(event.type == 'snapshot') {
+      //   setOrders(orders);
+      // }
+
+      // for (const event of events) {
+
+      // }
+    };
+  }
 
   useEffect(() => {
-    async function fetchOrders() {
-      if (!authenticated) return;
-      const orders = await getOrders();
-      setOrders(orders);
+    if (!authenticated) return;
+    // Get a JWT
+
+    async function init() {
+      const jwt = await getToken();
+      if (jwt) {
+        // TODO: Uncomment
+        // createSocket(jwt);
+      }
     }
 
-    fetchOrders();
-  }, [authenticated]);
+    init();
+  }, [authenticated, selectedProducts]);
 
   function DrawerHeader() {
     return (
@@ -66,6 +109,15 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
           >
             ALL STATUSES
           </button>
+
+          {/* TODO: Add live data to status indicator */}
+          <div
+            className={`flex gap-2 items-center text-green-500 bg-[#1E1E1E] border border-green-900 rounded px-2 py-1 ml-2
+            }`}
+          >
+            ONLINE{" "}
+            <span className="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+          </div>
         </div>
       </div>
     );
