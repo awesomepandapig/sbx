@@ -160,10 +160,10 @@ export default function OrderBook({ symbol }: OrderBookProps) {
     // Scroll to the middle when the component mounts
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      const middlePosition = container.scrollHeight / 2 - container.clientHeight / 2;
+      const middlePosition =
+        container.scrollHeight / 2 - container.clientHeight / 2;
       container.scrollTop = middlePosition;
     }
-
   }, [symbol, depth]);
 
   // Pad arrays to ensure consistent display size
@@ -185,7 +185,10 @@ export default function OrderBook({ symbol }: OrderBookProps) {
         <div className="w-1/2 text-right">Price</div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800"
+      >
         {/* Asks - display in ascending order (lowest ask at bottom) */}
         {paddedAsks.map((level, index) =>
           level.price > 0 ? (

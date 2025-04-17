@@ -11,7 +11,7 @@ export default function Home() {
         <Navbar />
       </header>
       <main className="pt-[65px] pb-[65px]">
-        <Hero/>
+        <Hero />
         <SectionOne />
         <SectionTwo />
       </main>

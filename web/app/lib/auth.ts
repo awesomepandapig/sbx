@@ -29,8 +29,7 @@ export async function getSession(cookie: string | null) {
 }
 
 export async function signIn(callbackURL?: string) {
-
-  if(!callbackURL) {
+  if (!callbackURL) {
     callbackURL = `${DOMAIN}/trade/JSP`;
   }
 
@@ -43,7 +42,7 @@ export async function signIn(callbackURL?: string) {
       body: JSON.stringify({
         provider: "discord",
         newUserCallbackURL: `${DOMAIN}/verify-ign`,
-        callbackURL  
+        callbackURL,
       }),
     });
     if (!response.ok) {
@@ -81,7 +80,7 @@ export async function signOut() {
   }
 }
 
-export async function requireUserSession({request}: LoaderFunctionArgs) {
+export async function requireUserSession({ request }: LoaderFunctionArgs) {
   try {
     const cookie = request.headers.get("Cookie");
     const session = await getSession(cookie);
@@ -92,16 +91,15 @@ export async function requireUserSession({request}: LoaderFunctionArgs) {
   } catch (error) {
     throw redirect("/", 302);
   }
-  
 }
 
-export async function getUserSession({request}: LoaderFunctionArgs) { 
+export async function getUserSession({ request }: LoaderFunctionArgs) {
   try {
     const cookie = request.headers.get("Cookie");
     const session = await getSession(cookie);
     const user = session.user;
     return user;
-  } catch(error) {
-    return null
+  } catch (error) {
+    return null;
   }
 }

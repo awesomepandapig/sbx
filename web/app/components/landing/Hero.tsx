@@ -57,15 +57,15 @@ export default function Hero() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <a href="/trade/JSP">
-          <button
-            className="duration-300 border border-blue-600 hover:bg-blue-700/80 h-12 text-white px-4 py-2 rounded-full shadow-[0_0_12px_#3b82f6]"
-            
-          >
-            Start Trading
-          </button></a>
-          <button className="border bg-[rgba(38,38,38,.7)] border-gray-700 hover:bg-gray-700/80 duration-300 h-12 text-white px-4 py-2 rounded-full">
-            Explore Docs
-          </button>
+            <button className="duration-300 border border-blue-600 hover:bg-blue-700/80 h-12 text-white px-4 py-2 rounded-full shadow-[0_0_12px_#3b82f6]">
+              Start Trading
+            </button>
+          </a>
+          <a href="/docs">
+            <button className="border bg-[rgba(38,38,38,.7)] border-gray-700 hover:bg-gray-700/80 duration-300 h-12 text-white px-4 py-2 rounded-full">
+              Explore Docs
+            </button>
+          </a>
         </div>
         <TickerGrid />
       </div>

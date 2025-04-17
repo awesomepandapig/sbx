@@ -52,39 +52,43 @@ export default function Trade() {
 
   // Get ticker data
   useEffect(() => {
-      const ws = new WebSocket(WS_URL);
-      ws.onopen = () => {
-        ws.send(
-          JSON.stringify({
-            type: "subscribe",
-            product_ids: [symbol],
-            channel: "ticker",
-          }),
-        );
-      };
-  
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data?.channel !== "ticker") return;
-  
-          const [tickerUpdate] = data.events;
-          setTickerData(tickerUpdate);
-        } catch (err) {
-          console.error("Error parsing ticker update:", err);
-        }
-      };
-    }, [symbol]);
+    const ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          product_ids: [symbol],
+          channel: "ticker",
+        }),
+      );
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.channel !== "ticker") return;
+
+        const [tickerUpdate] = data.events;
+        setTickerData(tickerUpdate);
+      } catch (err) {
+        console.error("Error parsing ticker update:", err);
+      }
+    };
+  }, [symbol]);
 
   return (
     <main className="flex flex-col h-screen bg-black">
-      <Header symbol={symbol} userImg={user?.image ?? undefined} tickerData={tickerData}/>
+      <Header
+        symbol={symbol}
+        userImg={user?.image ?? undefined}
+        tickerData={tickerData}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
           {/* Left section - Chart */}
           <div className="flex-1 min-w-0 z-0">
-            <Chart symbol={symbol} tickerData={tickerData}/>
+            <Chart symbol={symbol} tickerData={tickerData} />
           </div>
 
           {/* Middle section - Order Book */}

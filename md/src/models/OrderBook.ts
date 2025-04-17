@@ -190,6 +190,7 @@ export class OrderBook {
     price_percent_chg_24h: number,
     best_bid: number,
     best_ask: number
+    // TODO: 52week numbers
   } {
     let percentChange = 0;
     if (this.openPrice24h > 0) {
