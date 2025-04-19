@@ -9,6 +9,7 @@ interface OrderBookProps {
 
 interface Level2Update {
   side: "ask" | "bid";
+  event_time: number;
   price_level: string | number;
   new_quantity: string | number;
 }
@@ -114,7 +115,6 @@ export default function OrderBook({ symbol }: OrderBookProps) {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
       if (!data || data.channel !== "l2_data") return;
 
       const events = data.events;
@@ -130,14 +130,14 @@ export default function OrderBook({ symbol }: OrderBookProps) {
           const price = Number(update.price_level);
           const quantity = Number(update.new_quantity);
 
-          if (update.side === "ask") {
+          if (update.side === "sell") {
             if (quantity > 0) {
               asksMap.set(price, quantity);
             } else {
               asksMap.delete(price);
             }
             hasUpdates = true;
-          } else if (update.side === "bid") {
+          } else if (update.side === "buy") {
             if (quantity > 0) {
               bidsMap.set(price, quantity);
             } else {

@@ -6,8 +6,9 @@ export default function Level2ChannelDescription() {
     <div id="level2" className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-bold mb-6">Level2 Batch Channel</h2>
       <p className="mb-6">
-        The <CodeHighlight code="level2"/> channel streams a real-time, depth-aggregated view of the
-        order book, showing current bids and asks at each price level.
+        The <CodeHighlight code="level2" /> channel streams a real-time,
+        depth-aggregated view of the order book, showing current bids and asks
+        at each price level.
       </p>
       <CodeBlock
         className="mb-8"
@@ -37,13 +38,13 @@ export default function Level2ChannelDescription() {
                 product_id: "JSP",
                 updates: [
                   {
-                    side: "bid",
+                    side: "buy",
                     event_time: "1970-01-01T00:00:00Z",
                     price_level: "21921.73",
                     new_quantity: "0.06317902",
                   },
                   {
-                    side: "bid",
+                    side: "buy",
                     event_time: "1970-01-01T00:00:00Z",
                     price_level: "21921.3",
                     new_quantity: "0.02",

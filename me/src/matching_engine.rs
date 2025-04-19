@@ -7,11 +7,13 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 
-const STREAM_NEW_ORDER_SUFFIX: &'static str = "new";
-const STREAM_NEW_MATCH_SUFFIX: &'static str = "match";
-const STREAM_KEY_PREFIX: &'static str = "product";
-const CONSUMER_GROUP_NAME: &'static str = "matchers";
-const CONSUMER_NAME_PREFIX: &'static str = "matcher";
+const STREAM_KEY_PREFIX: &'static str = "instrument";
+const ORDER_STREAM_SUFFIX: &'static str = "orders";
+const EVENT_STREAM_SUFFIX: &'static str = "events";
+
+const CONSUMER_GROUP_NAME: &'static str = "matching-engine-service";
+const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
+
 const ORDER_SIDE_BUY: &'static str = "buy";
 const ORDER_TYPE_LIMIT: &'static str = "limit";
 // const ORDER_TYPE_MARKET: &'static str = "market";
@@ -19,7 +21,7 @@ const ORDER_TYPE_LIMIT: &'static str = "limit";
 const ORDER_STATUS_DONE: &'static str = "done";
 
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
-const REDIS_READ_COUNT: usize = 100;
+const REDIS_READ_COUNT: usize = 1000;
 
 #[derive(Eq, PartialEq)]
 struct BidPriority {
@@ -81,9 +83,8 @@ pub struct MatchingEngine {
     ask_pq: AskQueue,
     order_pool: OrderPool,
     order_map: OrderMap,
-    stream_new_order: String,
-    stream_new_match: String,
-    consumer_name: String,
+    order_stream: String,
+    event_stream: String,
     sequence_num: u64,
 }
 
@@ -95,15 +96,14 @@ impl MatchingEngine {
         let client: Client = Client::open(redis_url)?;
         let redis_connection: Connection = client.get_connection()?;
 
-        let stream_new_order = format!(
+        let order_stream = format!(
             "{}:{}:{}",
-            STREAM_KEY_PREFIX, product_id, STREAM_NEW_ORDER_SUFFIX
+            STREAM_KEY_PREFIX, ORDER_STREAM_SUFFIX, product_id
         );
-        let stream_new_match = format!(
+        let event_stream = format!(
             "{}:{}:{}",
-            STREAM_KEY_PREFIX, product_id, STREAM_NEW_MATCH_SUFFIX
+            STREAM_KEY_PREFIX, EVENT_STREAM_SUFFIX, product_id
         );
-        let consumer_name = format!("{}:{}", CONSUMER_NAME_PREFIX, product_id);
 
         return Ok(Self {
             redis_connection,
@@ -111,9 +111,8 @@ impl MatchingEngine {
             ask_pq: PriorityQueue::new(),
             order_pool: OrderPool::with_capacity(10_000),
             order_map: OrderMap::with_capacity(10_000),
-            stream_new_order,
-            stream_new_match,
-            consumer_name,
+            order_stream,
+            event_stream,
             sequence_num: 0,
         });
     }
@@ -130,13 +129,13 @@ impl MatchingEngine {
         let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(CONSUMER_GROUP_NAME)
-            .arg(&self.consumer_name)
+            .arg(CONSUMER_NAME)
             .arg("BLOCK")
             .arg(REDIS_BLOCK_TIMEOUT_MS)
             .arg("COUNT")
             .arg(REDIS_READ_COUNT)
             .arg("STREAMS")
-            .arg(&self.stream_new_order)
+            .arg(&self.order_stream)
             .arg(">") // Read only new messages
             .query(&mut self.redis_connection);
 
@@ -274,10 +273,11 @@ impl MatchingEngine {
     /// Emits matched orders to the match stream.
     fn emit_matches(&mut self, matched_orders: &Vec<Order>) {
         for order in matched_orders {
-            let redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
+            let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
+            redis_tuples.push(("action", "match".to_string()));
 
             let result: RedisResult<String> = self.redis_connection.xadd(
-                &self.stream_new_match, // Target stream name
+                &self.event_stream, // Target stream name
                 "*",                    // Auto-generate message ID
                 &redis_tuples,          // Key-value pairs
             );
@@ -292,7 +292,7 @@ impl MatchingEngine {
     // Batch acknowledge messages
     fn acknowledge_messages(&mut self, message_ids: &[String]) {
         let result: RedisResult<i32> = self.redis_connection.xack(
-            &self.stream_new_order,
+            &self.order_stream,
             CONSUMER_GROUP_NAME,
             message_ids,
         );
@@ -307,6 +307,15 @@ impl MatchingEngine {
         let order = &self.order_pool[order_index];
         match order.r#type.as_str() {
             ORDER_TYPE_LIMIT => {
+                // Emit Audit Log "ADDED" event
+                let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
+                redis_tuples.push(("action", "add".to_string()));
+
+                let _result: RedisResult<String> = self.redis_connection.xadd(
+                    &self.event_stream, // Target stream name
+                    "*",                    // Auto-generate message ID
+                    &redis_tuples,          // Key-value pairs
+                );
                 self.add_limit_order(order_index);
             }
             // ORDER_TYPE_MARKET => {
@@ -378,7 +387,7 @@ impl MatchingEngine {
     }
 
     // --- Main Loop ---
-    pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&mut self) {
         // TODO: XPENDING CHECK AT BEGINNING OF MATCHING ENGINE
         // self.process_pending_messages()?; // Add a method to handle messages not acked from previous runs
 
@@ -409,10 +418,5 @@ impl MatchingEngine {
                 self.acknowledge_messages(&processed_message_ids);
             }
         }
-        // Note: The loop above is infinite (`loop`). The Ok(()) below is unreachable
-        // in the current structure but kept for function signature completeness.
-        // A real application would need a shutdown mechanism.
-        #[allow(unreachable_code)]
-        Ok(())
     }
 }

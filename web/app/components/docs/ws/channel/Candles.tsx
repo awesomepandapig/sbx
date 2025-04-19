@@ -6,9 +6,9 @@ export default function CandlesChannelDescription() {
     <div id="candles" className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-bold mb-6">Candles Channel</h2>
       <p className="mb-6">
-        The <CodeHighlight code="candles"/> channel streams OHLCV (Open, High, Low, Close, Volume) data
-        once per second. Each update reflects price action grouped into 5-minute
-        intervals.
+        The <CodeHighlight code="candles" /> channel streams OHLCV (Open, High,
+        Low, Close, Volume) data once per second. Each update reflects price
+        action grouped into 5-minute intervals.
       </p>
       <CodeBlock
         className="mb-8"

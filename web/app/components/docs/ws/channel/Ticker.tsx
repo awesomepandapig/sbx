@@ -6,8 +6,9 @@ export default function TickerChannelDescription() {
     <div id="ticker" className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-bold mb-6">Ticker Channel</h2>
       <p className="mb-6">
-        The <CodeHighlight code="ticker"/> channel delivers live price updates for each trade match,
-        reflecting the most recent market activity in real time.
+        The <CodeHighlight code="ticker" /> channel delivers live price updates
+        for each trade match, reflecting the most recent market activity in real
+        time.
       </p>
       <CodeBlock
         className="mb-8"

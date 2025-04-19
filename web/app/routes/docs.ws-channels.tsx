@@ -37,15 +37,15 @@ export default function WebSocketChannelsPage() {
 
     const handleScroll = () => {
       const scrollPosition = window.scrollY + 100; // Offset for header
-      
+
       // Find the first section that's currently in view
       for (const id of channelData.map((channel) => channel.id)) {
         const element = channelRefs.current[id];
         if (!element) continue;
-        
+
         const offsetTop = element.offsetTop;
         const offsetHeight = element.offsetHeight;
-        
+
         if (
           scrollPosition >= offsetTop &&
           scrollPosition < offsetTop + offsetHeight
@@ -58,54 +58,54 @@ export default function WebSocketChannelsPage() {
 
     window.addEventListener("scroll", handleScroll);
     handleScroll(); // Initial run
-    
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
-    <main>
-      <h1 className="text-4xl font-bold mb-8">WebSocket Channels</h1>
+      <main>
+        <h1 className="text-4xl font-bold mb-8">WebSocket Channels</h1>
 
-      <div className="bg-amber-950 p-4 mb-8 rounded-xl">
-        <div className="flex">
-          <CircleAlert className="h-5 w-5 text-amber-500 mr-2 shrink-0" />
-          <div>
-            <p className="font-medium">
-              Use heartbeats to keep subscriptions open
-            </p>
-            <p className="mt-1">
-              Channels close after 60 seconds if no updates are sent. Subscribe
-              to{" "}
-              <a href="#heartbeats" className="text-blue-500">
-                heartbeats
-              </a>{" "}
-              to keep subscriptions open.
-            </p>
+        <div className="bg-amber-950 p-4 mb-8 rounded-xl">
+          <div className="flex">
+            <CircleAlert className="h-5 w-5 text-amber-500 mr-2 shrink-0" />
+            <div>
+              <p className="font-medium">
+                Use heartbeats to keep subscriptions open
+              </p>
+              <p className="mt-1">
+                Channels close after 60 seconds if no updates are sent.
+                Subscribe to{" "}
+                <a href="#heartbeats" className="text-blue-500">
+                  heartbeats
+                </a>{" "}
+                to keep subscriptions open.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <p className="mb-8">Our WebSocket provides the following channels:</p>
+        <p className="mb-8">Our WebSocket provides the following channels:</p>
 
-      <ChannelsTable />
+        <ChannelsTable />
 
-      <p className="mb-8">
-        Refer to the documentation on{" "}
-        <a className="text-blue-500" href="/docs/ws-overview#subscribing">
-          subscribing to a WebSocket channel
-        </a>
-        .
-      </p>
+        <p className="mb-8">
+          Refer to the documentation on{" "}
+          <a className="text-blue-500" href="/docs/ws-overview#subscribing">
+            subscribing to a WebSocket channel
+          </a>
+          .
+        </p>
 
-      <HeartbeatsChannelDescription />
-      <CandlesChannelDescription />
-      <TickerChannelDescription />
-      <TickerBatchChannelDescription />
-      <Level2ChannelDescription />
-      <UserChannelDescription />
-    </main>
-    <RightSidebar sections={channelData} activeSection={activeSection} />
+        <HeartbeatsChannelDescription />
+        <CandlesChannelDescription />
+        <TickerChannelDescription />
+        <TickerBatchChannelDescription />
+        <Level2ChannelDescription />
+        <UserChannelDescription />
+      </main>
+      <RightSidebar sections={channelData} activeSection={activeSection} />
     </>
   );
 }

@@ -54,11 +54,20 @@ export class Level2Channel extends Channel {
     }
   }
 
-  protected async handleUpdate(message: string): Promise<void> {
+  protected async handleUpdate(
+    message: string,
+    channelName: string,
+  ): Promise<void> {
     const channel = 'level2';
+    const [, productId] = channelName.split('marketdata:level2:');
     try {
       const parsedMessage = JSON.parse(message);
-      const { product_id: productId } = parsedMessage;
+
+      const events = [{
+        type: "update",
+        product_id: productId,
+        updates: [parsedMessage]
+      }]
 
       // Send to all clients subscribed to this product
       for (const ws of this.subscribers) {
@@ -66,7 +75,7 @@ export class Level2Channel extends Channel {
         if (!channelSubscriptions) continue;
 
         if (channelSubscriptions.has(productId)) {
-          ws.sendMessage(`l2_data`, [parsedMessage]);
+          ws.sendMessage(`l2_data`, events);
         }
       }
     } catch (error) {

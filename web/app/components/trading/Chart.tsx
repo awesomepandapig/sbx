@@ -7,26 +7,11 @@ import {
 } from "lightweight-charts";
 import { useEffect, useRef, useState } from "react";
 
-interface Ticker {
-  best_ask: number;
-  best_ask_quantity: number;
-  best_bid: number;
-  best_bid_quantity: number;
-  high_24h: number;
-  low_24h: number;
-  price: number;
-  price_percent_chg_24h: number;
-  product_id: string;
-  type: "ticker";
-  volume_24h: number;
-}
-
 interface ChartProps {
   symbol: string;
-  tickerData: Ticker | undefined;
 }
 
-export default function Chart({ symbol, tickerData }: ChartProps) {
+export default function Chart({ symbol }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const areaSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const lastUpdateRef = useRef<number>(Date.now());
@@ -55,7 +40,7 @@ export default function Chart({ symbol, tickerData }: ChartProps) {
         },
       },
       layout: {
-        attributionLogo: false
+        attributionLogo: false,
       },
       crosshair: {
         horzLine: {
@@ -94,18 +79,19 @@ export default function Chart({ symbol, tickerData }: ChartProps) {
   }, []);
 
   // Push new point to chart every 1000ms
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!tickerData || !areaSeriesRef.current) return;
+  // TODO: REPLACE WITH CANDLES DATA
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (!tickerData || !areaSeriesRef.current) return;
 
-      const now = Math.floor(Date.now() / 1000) as UTCTimestamp;
-      const price = tickerData.price;
+  //     const now = Math.floor(Date.now() / 1000) as UTCTimestamp;
+  //     const price = tickerData.price;
 
-      areaSeriesRef.current.update({ time: now, value: price });
-    }, 100);
+  //     areaSeriesRef.current.update({ time: now, value: price });
+  //   }, 100);
 
-    return () => clearInterval(interval);
-  }, [tickerData]);
+  //   return () => clearInterval(interval);
+  // }, [tickerData]);
 
   return <div ref={chartContainerRef} />;
 }

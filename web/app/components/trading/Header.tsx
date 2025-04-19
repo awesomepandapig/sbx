@@ -1,24 +1,27 @@
+import { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import AvatarMenu from "./AvatarMenu";
+import { WS_URL } from "~/lib/config";
 
 interface Ticker {
-  best_ask: number;
-  best_ask_quantity: number;
+  product_id: string;
+  price: number;
+  volume_24_h: number;
+  low_24_h: number;
+  high_24_h: number;
+  low_52_w: number;
+  high_52_w: number;
+  price_percent_chg_24_h: number;
   best_bid: number;
   best_bid_quantity: number;
-  high_24h: number;
-  low_24h: number;
-  price: number;
-  price_percent_chg_24h: number;
-  product_id: string;
+  best_ask: number;
+  best_ask_quantity: number;
   type: "ticker";
-  volume_24h: number;
 }
 
 interface HeaderProps {
   symbol: string;
   userImg?: string;
-  tickerData: Ticker | undefined;
 }
 
 type SignInButtonsProps = {
@@ -79,7 +82,35 @@ const SymbolSelect = ({ symbol }: { symbol: string }) => (
   </div>
 );
 
-export default function Header({ symbol, userImg, tickerData }: HeaderProps) {
+export default function Header({ symbol, userImg }: HeaderProps) {
+  const [tickerData, setTickerData] = useState<Ticker>();
+
+  // Get ticker data
+  useEffect(() => {
+    const ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          product_ids: [symbol],
+          channel: "ticker",
+        }),
+      );
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.channel !== "ticker") return;
+
+        const [tickerUpdate] = data.events;
+        setTickerData(tickerUpdate);
+      } catch (err) {
+        console.error("Error parsing ticker update:", err);
+      }
+    };
+  }, [symbol]);
+
   return (
     <header className="flex flex-row items-center justify-between p-3 bg-[#121212] border-b border-[#2a2a2a]">
       <div className="flex items-center">
@@ -88,11 +119,11 @@ export default function Header({ symbol, userImg, tickerData }: HeaderProps) {
           <StatBlock
             label="Last Price (24H)"
             value={tickerData?.price}
-            priceChange={tickerData?.price_percent_chg_24h}
+            priceChange={tickerData?.price_percent_chg_24_h}
           />
-          <StatBlock label="24H Volume" value={tickerData?.volume_24h} />
-          <StatBlock label="24H High" value={tickerData?.high_24h} />
-          <StatBlock label="24H Low" value={tickerData?.low_24h} />
+          <StatBlock label="24H Volume" value={tickerData?.volume_24_h} />
+          <StatBlock label="24H High" value={tickerData?.high_24_h} />
+          <StatBlock label="24H Low" value={tickerData?.low_24_h} />
         </div>
       </div>
       {userImg ? <AvatarMenu userImg={userImg} /> : <></>}

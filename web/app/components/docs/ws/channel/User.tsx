@@ -6,8 +6,8 @@ export default function UserChannelDescription() {
     <div id="user" className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-bold mb-6">User Batch Channel</h2>
       <p className="mb-6">
-        The <CodeHighlight code='user'/> channel sends real-time updates related to the authenticated
-        user's orders.
+        The <CodeHighlight code="user" /> channel sends real-time updates
+        related to the authenticated user's orders.
       </p>
       <CodeBlock
         className="mb-8"
@@ -22,7 +22,8 @@ export default function UserChannelDescription() {
         }
       />
       <p className="mb-6">
-        Each matched order will contain a <CodeHighlight code="counterparty_minecraft_id"/>. This is the
+        Each matched order will contain a{" "}
+        <CodeHighlight code="counterparty_minecraft_id" />. This is the
         minecraft UUID of the player who you traded with. You can use the{" "}
         <a
           href="https://minecraft.wiki/w/Mojang_API#Query_player's_username"

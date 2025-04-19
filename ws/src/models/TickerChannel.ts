@@ -2,9 +2,9 @@ import { AuthenticatedWebSocket } from './index';
 import { Channel } from './index';
 
 export class TickerChannel extends Channel {
-    protected async onSubscribe(): Promise<void> {
-        return Promise.resolve();
-    }
+  protected async onSubscribe(): Promise<void> {
+    return Promise.resolve();
+  }
 
   protected async handleUpdate(message: string): Promise<void> {
     const channel = 'ticker';

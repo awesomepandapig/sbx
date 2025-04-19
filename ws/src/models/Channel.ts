@@ -37,12 +37,11 @@ export abstract class Channel {
     channel.redisPubSub = redisPubSub;
 
     for (const channelName of channels) {
+      await redisPubSub.subscribe(channelName, async (message, channelName) => {
+        await channel.handleUpdate(message, channelName);
+      });
       console.log(`${channelName} channel initialized`);
     }
-
-    await redisPubSub.subscribe(channels, async (message) => {
-      await channel.handleUpdate(message);
-    });
 
     return channel;
   }
@@ -143,7 +142,10 @@ export abstract class Channel {
     this.sendSubscriptions(ws);
   }
 
-  protected abstract handleUpdate(message: string): Promise<void>;
+  protected abstract handleUpdate(
+    message: string,
+    channelName: string,
+  ): Promise<void>;
 
   public cleanup(ws: AuthenticatedWebSocket) {
     this.subscribers.delete(ws);

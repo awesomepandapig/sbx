@@ -108,7 +108,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const orderStringified = order.toRedisTuples();
 
     // Add the message to the message stream
-    const streamKey = `product:${order.product_id}:new`;
+    const streamKey = `instrument:orders:${order.product_id}`;
     const streamId = `${Date.now()}-${sequence_num}`;
     await redisClient.xAdd(
       streamKey,

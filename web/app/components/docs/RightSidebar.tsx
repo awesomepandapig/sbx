@@ -8,7 +8,10 @@ interface RightSidebarProps {
   activeSection: string;
 }
 
-export default function RightSidebar({ sections, activeSection }: RightSidebarProps) {
+export default function RightSidebar({
+  sections,
+  activeSection,
+}: RightSidebarProps) {
   return (
     <div className="w-64 shrink-0 fixed right-0 top-14 bottom-0 overflow-hidden">
       <div className="h-full overflow-y-auto">

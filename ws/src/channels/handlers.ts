@@ -20,7 +20,7 @@ interface ChannelHandler {
 async function initLevel2() {
   await waitForRedis();
   const channels = Array.from(activeProducts).map(
-    (id) => `product:${id}:l2_data`,
+    (id) => `marketdata:level2:${id}`,
   );
   return Level2Channel.initialize(channels);
 }
@@ -33,7 +33,9 @@ async function initUser() {
 
 async function initTicker() {
   await waitForRedis();
-  const channels = Array.from(activeProducts).map((id) => `product:${id}:ticker`);
+  const channels = Array.from(activeProducts).map(
+    (id) => `marketdata:ticker:${id}`,
+  );
   return TickerChannel.initialize(channels);
 }
 

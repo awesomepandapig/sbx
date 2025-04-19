@@ -6,9 +6,10 @@ export default function HeartbeatsChannelDescription() {
     <div id="heartbeats" className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-bold mb-6">Heartbeats Channel</h2>
       <p className="mb-6">
-        The <CodeHighlight code="heartbeats"/> channel emits a message every second to maintain an
-        active connection. Each message includes a <CodeHighlight code="heartbeat_counter"/> to help
-        detect missed messages.
+        The <CodeHighlight code="heartbeats" /> channel emits a message every
+        second to maintain an active connection. Each message includes a{" "}
+        <CodeHighlight code="heartbeat_counter" /> to help detect missed
+        messages.
       </p>
       <CodeBlock
         className="mb-8"
