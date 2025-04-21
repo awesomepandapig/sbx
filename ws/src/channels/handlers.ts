@@ -1,5 +1,5 @@
 import { activeProducts, waitForRedis } from '../config/index';
-import { UserChannel, Level2Channel, TickerChannel } from '../models/index';
+import { UserChannel, Level2Channel, TickerChannel, TickerBatchChannel, CandlesChannel } from '../models/index';
 import { handleAuth } from 'messages';
 
 import type {
@@ -39,9 +39,27 @@ async function initTicker() {
   return TickerChannel.initialize(channels);
 }
 
+async function initTickerBatch() {
+  await waitForRedis();
+  const channels = Array.from(activeProducts).map(
+    (id) => `marketdata:ticker_batch:${id}`,
+  );
+  return TickerBatchChannel.initialize(channels);
+}
+
+async function initCandles() {
+  await waitForRedis();
+  const channels = Array.from(activeProducts).map(
+    (id) => `marketdata:candles:${id}`,
+  );
+  return CandlesChannel.initialize(channels);
+}
+
 const level2 = await initLevel2();
 const user = await initUser();
 const ticker = await initTicker();
+const ticker_batch = await initTickerBatch();
+const candles = await initCandles();
 
 export const channelHandlers: Record<string, ChannelHandler> = {
   level2: {
@@ -53,6 +71,16 @@ export const channelHandlers: Record<string, ChannelHandler> = {
     subscribe: (...args) => ticker.subscribe(...args),
     unsubscribe: (...args) => ticker.unsubscribe(...args),
     cleanup: (...args) => ticker.cleanup(...args),
+  },
+  ticker_batch: {
+    subscribe: (...args) => ticker_batch.subscribe(...args),
+    unsubscribe: (...args) => ticker_batch.unsubscribe(...args),
+    cleanup: (...args) => ticker_batch.cleanup(...args),
+  },
+  candles: {
+    subscribe: (...args) => candles.subscribe(...args),
+    unsubscribe: (...args) => candles.unsubscribe(...args),
+    cleanup: (...args) => candles.cleanup(...args),
   },
   user: {
     subscribe: async (ws, msg) => {

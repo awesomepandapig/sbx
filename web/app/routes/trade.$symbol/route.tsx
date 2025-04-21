@@ -34,7 +34,7 @@ export default function Trade() {
   }, [user, navigate]);
 
   return (
-    <main className="flex flex-col h-screen bg-black">
+    <main className="flex flex-col h-screen">
       <Header symbol={symbol} userImg={user?.image ?? undefined} />
 
       <div className="flex flex-1 overflow-hidden">

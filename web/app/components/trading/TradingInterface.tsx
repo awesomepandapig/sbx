@@ -200,7 +200,7 @@ export default function TradingInterface({
                 ? "bg-gray-500/50 text-gray-500 cursor-not-allowed"
                 : "bg-blue-400 text-blue-950"
             }`}
-            onClick={() => createOrder}
+            onClick={() => createOrder()}
             disabled={isOrderButtonDisabled}
           >
             {side === "buy" ? "Buy" : "Sell"}

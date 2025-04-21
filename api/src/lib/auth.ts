@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { jwt, bearer, openAPI } from 'better-auth/plugins';
+import { jwt, bearer, openAPI, apiKey } from 'better-auth/plugins';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db/index';
 import * as schema from '../db/schema';
@@ -31,7 +31,7 @@ export const auth = betterAuth({
       clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
     },
   },
-  plugins: [openAPI(), jwt(), bearer()],
+  plugins: [openAPI(), jwt(), bearer(), apiKey()],
   advanced: {
     crossSubDomainCookies: {
       enabled: PROD,

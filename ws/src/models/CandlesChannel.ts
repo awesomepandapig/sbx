@@ -2,20 +2,21 @@ import { redisClient } from '../config/index';
 import { AuthenticatedWebSocket } from './index';
 import { Channel } from './index';
 
-interface Update {
-  side: 'buy' | 'sell';
-  event_time: string;
-  price_level: number;
-  new_quantity: number;
+interface CandleUpdate {
+  start: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
 }
 
 interface Event {
   type: 'snapshot' | 'update';
-  product_id: string;
-  updates: Update[];
+  candles: CandleUpdate[];
 }
 
-export class Level2Channel extends Channel {
+export class CandlesChannel extends Channel {
   // Override the hook to send snapshots for new product subscriptions
   protected async onSubscribe(
     ws: AuthenticatedWebSocket,
@@ -36,21 +37,21 @@ export class Level2Channel extends Channel {
 
     for (const productId of products) {
       try {
+        // TODO:
         const snapshotRaw = await redisClient.hGet('snapshot', productId);
         if (!snapshotRaw) continue;
 
         const snapshot = JSON.parse(snapshotRaw);
         events.push({
           type: 'snapshot',
-          product_id: productId,
-          updates: snapshot,
+          candles: snapshot,
         });
       } catch (error) {
         console.error(`Failed to get snapshot for ${productId}:`, error);
       }
     }
     if (events.length > 0) {
-      ws.sendMessage('l2_data', events);
+      ws.sendMessage('candles', events);
     }
   }
 
@@ -58,15 +59,14 @@ export class Level2Channel extends Channel {
     message: string,
     channelName: string,
   ): Promise<void> {
-    const channel = 'level2';
-    const [, productId] = channelName.split('marketdata:level2:');
+    const channel = 'candles';
+    const [, productId] = channelName.split('marketdata:candles:');
     try {
       const parsedMessage = JSON.parse(message);
 
       const events = [{
         type: "update",
-        product_id: productId,
-        updates: [parsedMessage]
+        candles: [parsedMessage]
       }]
 
       // Send to all clients subscribed to this product
@@ -75,7 +75,7 @@ export class Level2Channel extends Channel {
         if (!channelSubscriptions) continue;
 
         if (channelSubscriptions.has(productId)) {
-          ws.sendMessage(`l2_data`, events);
+          ws.sendMessage(`candles`, events);
         }
       }
     } catch (error) {

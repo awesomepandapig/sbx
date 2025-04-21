@@ -22,7 +22,7 @@ interface Event {
   tickers: Ticker[];
 }
 
-export class TickerChannel extends Channel {
+export class TickerBatchChannel extends Channel {
   protected async onSubscribe(): Promise<void> {
     // TODO: Send snapshot of last ticker quote (we can store this in memory)
     return Promise.resolve();
@@ -33,8 +33,8 @@ export class TickerChannel extends Channel {
         message: string,
         channelName: string,
       ): Promise<void> {
-    const channel = 'ticker';
-    const [, productId] = channelName.split('marketdata:ticker:');
+    const channel = 'ticker_batch';
+    const [, productId] = channelName.split('marketdata:ticker_batch:');
     try {
       const parsedMessage = JSON.parse(message);
       
@@ -49,7 +49,7 @@ export class TickerChannel extends Channel {
         if (!channelSubscriptions) continue;
 
         if (channelSubscriptions.has(productId)) {
-          ws.sendMessage(`ticker`, events);
+          ws.sendMessage(`ticker_batch`, events);
         }
       }
     } catch (error) {

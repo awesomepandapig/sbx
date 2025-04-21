@@ -1,4 +1,4 @@
-import { LicenseBlock } from "~/components/LicenseBlock";
+import { LicenseBlock } from "~/components/docs/LicenseBlock";
 
 export default function Licenses() {
   return (

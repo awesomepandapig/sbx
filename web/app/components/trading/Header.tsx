@@ -3,20 +3,24 @@ import { ChevronDown } from "lucide-react";
 import AvatarMenu from "./AvatarMenu";
 import { WS_URL } from "~/lib/config";
 
+interface Event {
+  type: "snapshot" | "update";
+  tickers: Ticker[];
+}
+
 interface Ticker {
   product_id: string;
-  price: number;
-  volume_24_h: number;
-  low_24_h: number;
-  high_24_h: number;
-  low_52_w: number;
-  high_52_w: number;
-  price_percent_chg_24_h: number;
-  best_bid: number;
-  best_bid_quantity: number;
-  best_ask: number;
-  best_ask_quantity: number;
-  type: "ticker";
+  price: string;
+  volume_24_h: string;
+  low_24_h: string;
+  high_24_h: string;
+  low_52_w: string;
+  high_52_w: string;
+  price_percent_chg_24_h: string;
+  best_bid: string;
+  best_bid_quantity: string;
+  best_ask: string;
+  best_ask_quantity: string;
 }
 
 interface HeaderProps {
@@ -32,19 +36,21 @@ const StatBlock = ({
   label,
   value,
   priceChange,
+  className,
 }: {
   label: string;
   value: string | number | undefined;
-  priceChange?: number;
+  priceChange?: string;
+  className?: string;
 }) => (
-  <div className="flex flex-col">
+  <div className={`flex flex-col ${className}`}>
     <span className="text-gray-400 text-xs">{label}</span>
     <div className="flex items-center">
-      <span className="text-white text-sm font-medium tabular-nums">
+      <span className="text-white text-sm font-medium tabular-nums inline-block">
         {typeof value === "number" ? (
           `$${value.toLocaleString()}`
         ) : (
-          <span className="inline-block h-5 w-[10ch] bg-gray-700 animate-pulse rounded"></span>
+          <span className="inline-block h-5 w-[11ch] bg-gray-700 animate-pulse rounded"></span>
         )}
       </span>
       {typeof priceChange === "number" && (
@@ -52,7 +58,7 @@ const StatBlock = ({
           className={`text-sm ml-4 ${priceChange < 0 ? "text-red-500" : "text-green-500"}`}
         >
           {priceChange > 0 ? "+" : ""}
-          {priceChange.toFixed(4)}%
+          {parseFloat(priceChange).toFixed(2)}%
         </span>
       )}
     </div>
@@ -103,8 +109,20 @@ export default function Header({ symbol, userImg }: HeaderProps) {
         const data = JSON.parse(event.data);
         if (data?.channel !== "ticker") return;
 
-        const [tickerUpdate] = data.events;
-        setTickerData(tickerUpdate);
+        let tickerUpdate: Ticker | undefined;
+
+        for (const evt of data.events as Event[]) {
+          for (const ticker of evt.tickers) {
+            if (ticker.product_id === symbol) {
+              tickerUpdate = ticker;
+              break;
+            }
+          }
+          if (tickerUpdate) break;
+        }
+        if (tickerUpdate) {
+          setTickerData(tickerUpdate);
+        }
       } catch (err) {
         console.error("Error parsing ticker update:", err);
       }
@@ -120,8 +138,13 @@ export default function Header({ symbol, userImg }: HeaderProps) {
             label="Last Price (24H)"
             value={tickerData?.price}
             priceChange={tickerData?.price_percent_chg_24_h}
+            className="min-w-[20ch]"
           />
-          <StatBlock label="24H Volume" value={tickerData?.volume_24_h} />
+          <StatBlock label="24H Volume" value={
+  tickerData?.price && tickerData?.volume_24_h
+    ? Number(tickerData.price) * Number(tickerData.volume_24_h)
+    : undefined
+} />
           <StatBlock label="24H High" value={tickerData?.high_24_h} />
           <StatBlock label="24H Low" value={tickerData?.low_24_h} />
         </div>

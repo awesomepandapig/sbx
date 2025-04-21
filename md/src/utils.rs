@@ -1,14 +1,7 @@
 use super::order::Order;
 
 use redis::streams::StreamReadReply;
-use redis::{Connection, Commands, RedisResult};
-
-// TODO: CHANGE TO USE PRODUCT ID
-// const STREAM_KEY_PREFIX: &'static str = "instrument";
-// const EVENT_STREAM_SUFFIX: &'static str = "events";
-
-// TODO: REPLACE WITH PRODUCTID
-const STREAM_NAME: &'static str = "instrument:events:JSP";
+use redis::{Commands, Connection, RedisResult};
 
 const CONSUMER_GROUP_NAME: &'static str = "market-data-service";
 const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
@@ -16,19 +9,24 @@ const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
 const REDIS_READ_COUNT: usize = 1000;
 
-pub fn read_from_stream(conn: &mut Connection) -> Vec<(String, Order)> {
+pub fn read_from_streams(conn: &mut Connection, products: &Vec<String>) -> Vec<(String, Order)> {
+    let stream_names: Vec<String> = products
+        .iter()
+        .map(|p| format!("instrument:events:{}", p))
+        .collect();
+
     let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
-        .arg("GROUP")
-        .arg(CONSUMER_GROUP_NAME)
-        .arg(CONSUMER_NAME)
-        .arg("BLOCK")
-        .arg(REDIS_BLOCK_TIMEOUT_MS)
-        .arg("COUNT")
-        .arg(REDIS_READ_COUNT)
-        .arg("STREAMS")
-        .arg(STREAM_NAME)
-        .arg(">")
-        .query(conn);
+    .arg("GROUP")
+    .arg(CONSUMER_GROUP_NAME)
+    .arg(CONSUMER_NAME)
+    .arg("BLOCK")
+    .arg(REDIS_BLOCK_TIMEOUT_MS)
+    .arg("COUNT")
+    .arg(REDIS_READ_COUNT)
+    .arg("STREAMS")
+    .arg(stream_names)
+    .arg(">")
+    .query(conn);
 
     let mut orders: Vec<(String, Order)> = Vec::new();
     let reply = match results {
@@ -53,6 +51,6 @@ pub fn read_from_stream(conn: &mut Connection) -> Vec<(String, Order)> {
     return orders;
 }
 
-pub fn acknowledge(conn: &mut Connection, message_id: &str) {
-    let _result: RedisResult<i32> = conn.xack(STREAM_NAME, CONSUMER_GROUP_NAME, &[message_id]);
+pub fn acknowledge(conn: &mut Connection, stream_name: &str, message_id: &str) {
+    let _: RedisResult<i64> = conn.xack(stream_name, CONSUMER_GROUP_NAME, &[message_id]);
 }

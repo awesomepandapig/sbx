@@ -4,7 +4,7 @@ import { validateProduct } from '../models/product';
 import { Order, OrderSchema, OrderResponse } from 'models/order';
 import { z } from 'zod';
 import { activeProducts, redisClient } from '../config/index';
-import { order as OrderTable } from '../db/schema'
+import { order as OrderTable } from '../db/schema';
 import { db } from '../db/index';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -53,7 +53,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
   //   // TODO: Handle
   //   console.log(error);
   // }
-  res.status(200).json({orders: []})
+  res.status(200).json({ orders: [] });
 });
 
 // // TODO: Cancel all orders
@@ -66,8 +66,6 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     const data = OrderSchema.parse(req.body);
-
-    
 
     // TODO: ADD HYPIXEL PURSE CHECK TO ENSURE USER HAS SUFFICIENT FUNDS FOR BID
 
@@ -98,10 +96,6 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     //   res.status(400).json({ message: 'Maximum number of active asks reached' });
     //   return;
     // }
-
-    
-    
-    
 
     // Create new order
     const order = new Order({ ...data, user_id: userId });

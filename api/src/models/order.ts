@@ -107,4 +107,4 @@ export interface OrderResponse {
   price?: number;
   cancel_after?: string;
   size: number;
-};
+}

@@ -29,19 +29,19 @@ export default function CandlesChannelDescription() {
           escapeJSONString({
             channel: "candles",
             client_id: "",
-            timestamp: "2025-04-16T08:50:26.000Z",
+            timestamp: "2025-04-19T22:07:31.937Z",
             sequence_num: 0,
             events: [
               {
-                type: "snapshot",
+                type: "update",
                 candles: [
                   {
-                    start: "1688998200",
-                    high: "1867.72",
-                    low: "1865.63",
-                    open: "1867.38",
-                    close: "1866.81",
-                    volume: "0.20269406",
+                    start: "1745100300",
+                    open: "545",
+                    high: "549",
+                    low: "511",
+                    close: "544",
+                    volume: "1234",
                     product_id: "JSP",
                   },
                 ],
