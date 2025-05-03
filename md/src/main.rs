@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut quantity_change = 0;
 
             match order.action.as_str() {
-                "add" => {
+                "create" => {
                     if order.r#type == "limit" {
                         quantity_change = book.add_order(&order);
                         level2(
@@ -182,7 +182,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         price,
                         quantity_change,
                     );
+
                 }
+                "cancel_reject" => {}
                 _ => {
                     eprintln!(
                         "[{}] Unknown order action: '{}'. Skipping.",

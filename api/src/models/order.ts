@@ -34,11 +34,12 @@ export class Order {
   type: 'market' | 'limit';
   created_at: number;
   executed_value: number;
-  status: 'open' | 'done';
+  status: 'open' | 'done' | 'cancelled';
   settled: boolean;
   price?: number;
   cancel_after?: 'min' | 'hour';
   size: number;
+  action: 'create' | 'cancel';
 
   constructor(data: {
     product_id: string;
@@ -47,6 +48,7 @@ export class Order {
     type: 'market' | 'limit';
     price?: number;
     size: number;
+    action: 'create' | 'cancel';
   }) {
     this.id = randomUUID();
     this.product_id = data.product_id;
@@ -59,6 +61,7 @@ export class Order {
     this.settled = false;
     this.size = data.size;
     this.price = data.price;
+    this.action = data.action;
 
     if (this.type === 'limit' && this.side == 'sell') {
       this.cancel_after = 'min'; // Set to min for mineshaft markets
@@ -71,14 +74,15 @@ export class Order {
 
   toRedisTuples() {
     const json = {
-      id: this.id.toString(),
+      action: this.action,
+      id: this.id,
       product_id: this.product_id,
       user_id: this.user_id,
-      side: this.side.toString(),
-      type: this.type.toString(),
+      side: this.side,
+      type: this.type,
       created_at: this.created_at.toString(),
       executed_value: this.executed_value.toString(),
-      status: this.status.toString(),
+      status: this.status,
       settled: this.settled.toString(),
       size: this.size.toString(),
     } as Record<string, string>;
@@ -102,7 +106,7 @@ export interface OrderResponse {
   type: 'market' | 'limit';
   created_at: string;
   executed_value: number;
-  status: 'open' | 'done';
+  status: 'open' | 'done' | 'cancelled';
   settled: boolean;
   price?: number;
   cancel_after?: string;

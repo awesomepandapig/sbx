@@ -63,11 +63,13 @@ export class Level2Channel extends Channel {
     try {
       const parsedMessage = JSON.parse(message);
 
-      const events = [{
-        type: "update",
-        product_id: productId,
-        updates: [parsedMessage]
-      }]
+      const events = [
+        {
+          type: 'update',
+          product_id: productId,
+          updates: [parsedMessage],
+        },
+      ];
 
       // Send to all clients subscribed to this product
       for (const ws of this.subscribers) {

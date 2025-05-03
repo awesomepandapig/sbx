@@ -1,7 +1,7 @@
 use super::models::order::Order;
 use priority_queue::PriorityQueue;
 use redis::streams::StreamReadReply;
-use redis::{Client, Commands, Connection, RedisResult};
+use redis::{from_redis_value, Client, Commands, Connection, RedisResult};
 use slab::Slab;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -15,10 +15,16 @@ const CONSUMER_GROUP_NAME: &'static str = "matching-engine-service";
 const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
 
 const ORDER_SIDE_BUY: &'static str = "buy";
+const ORDER_SIDE_SELL: &'static str = "sell";
+
+const ORDER_ACTION_CREATE: &'static str = "create";
+const ORDER_ACTION_CANCEL: &'static str = "cancel";
+
 const ORDER_TYPE_LIMIT: &'static str = "limit";
-// const ORDER_TYPE_MARKET: &'static str = "market";
-// const ORDER_TYPE_CANCEL: &'static str = "cancel"; TODO:
+const ORDER_TYPE_MARKET: &'static str = "market";
+
 const ORDER_STATUS_DONE: &'static str = "done";
+const ORDER_STATUS_CANCELLED: &'static str = "cancelled";
 
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
 const REDIS_READ_COUNT: usize = 1000;
@@ -125,7 +131,7 @@ impl MatchingEngine {
     }
 
     /// Reads new orders from the Redis stream using XREADGROUP.
-    fn read_orders_from_stream(&mut self) -> Vec<(OrderId, usize)> {
+    fn read_orders_from_stream(&mut self) -> (Vec<usize>, Vec<String>) {
         let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(CONSUMER_GROUP_NAME)
@@ -139,36 +145,64 @@ impl MatchingEngine {
             .arg(">") // Read only new messages
             .query(&mut self.redis_connection);
 
-        let mut order_entries: Vec<(OrderId, usize)> = Vec::new();
+        let mut order_entries: Vec<usize> = Vec::new();
+        let mut message_ids: Vec<String> = Vec::new();
+
         let reply = match results {
             Ok(reply) => reply,
             Err(err) => {
                 eprintln!("Redis stream read failed: {}", err);
-                return order_entries;
+                return (order_entries, message_ids);
             }
         };
 
         for stream_key in reply.keys {
             for stream_id in stream_key.ids {
-                let message_id = stream_id.id;
-                match Order::from_redis_map(&stream_id.map) {
-                    Ok(order) => {
-                        let order_index = self.order_pool.insert(order);
-                        order_entries.push((message_id, order_index));
+                let message_id = stream_id.id.clone();
+                let map: &HashMap<String, redis::Value> = &stream_id.map;
+
+                message_ids.push(message_id.clone());
+
+                let action_val: &redis::Value =
+                    map.get("action").expect("action missing");
+                let action: String = from_redis_value::<String>(action_val)
+                    .expect("action value not convertible to String");
+
+                match action.as_str() {
+                    ORDER_ACTION_CANCEL => {
+                        let order_id_val: &redis::Value =
+                            map.get("id").expect("order_id missing for cancel");
+                        let order_id: String = from_redis_value::<String>(
+                            order_id_val,
+                        )
+                        .expect("order_id value not convertible to String");
+
+                        self.cancel_immediate(&order_id);
                     }
-                    Err(e) => {
-                        // Decide how to handle parsing errors. Log and skip acknowledgment?
-                        // Or attempt to acknowledge anyway? Skipping ack for now.
+                    ORDER_ACTION_CREATE => {
+                        match Order::from_redis_map(&stream_id.map) {
+                            Ok(order) => {
+                                let order_index = self.order_pool.insert(order);
+                                order_entries.push(order_index);
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "ERR: CREATE parse failed {}: {}",
+                                    message_id, e
+                                );
+                            }
+                        }
+                    }
+                    unknown_action => {
                         eprintln!(
-                            "Error parsing order from message ID {}: {}",
-                            message_id, e
+                            "ERR: Unknown action '{}' {}",
+                            unknown_action, message_id
                         );
-                        // TODO: Maybe move to a dead-letter queue?
                     }
                 }
             }
         }
-        return order_entries;
+        return (order_entries, message_ids);
     }
 
     /// Adds a limit order to the appropriate priority queue and the order map.
@@ -278,8 +312,8 @@ impl MatchingEngine {
 
             let result: RedisResult<String> = self.redis_connection.xadd(
                 &self.event_stream, // Target stream name
-                "*",                    // Auto-generate message ID
-                &redis_tuples,          // Key-value pairs
+                "*",                // Auto-generate message ID
+                &redis_tuples,      // Key-value pairs
             );
 
             if let Err(e) = result {
@@ -308,63 +342,70 @@ impl MatchingEngine {
         match order.r#type.as_str() {
             ORDER_TYPE_LIMIT => {
                 // Emit Audit Log "ADDED" event
-                let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
-                redis_tuples.push(("action", "add".to_string()));
+                let mut redis_tuples: Vec<(&str, String)> =
+                    order.to_redis_tuples();
+                redis_tuples.push(("action", "create".to_string()));
 
                 let _result: RedisResult<String> = self.redis_connection.xadd(
                     &self.event_stream, // Target stream name
-                    "*",                    // Auto-generate message ID
-                    &redis_tuples,          // Key-value pairs
+                    "*",                // Auto-generate message ID
+                    &redis_tuples,      // Key-value pairs
                 );
                 self.add_limit_order(order_index);
             }
             // ORDER_TYPE_MARKET => {
             // TODO: Implement IOC / Market order logic (immediate matching attempt without booking)
             // }
-            // TODO: ORDER_TYPE_CANCEL => {
-            //     println!("Processing CANCEL order: {}", order.id);
-            //     self.cancel_immediate(&order);
-            // }
-            _ => {}
+            _ => {} // TODO: if order.cancel_after is set:
+                    // self.schedule_cancellation(&order);
         }
-
-        // TODO: if order.cancel_after is set:
-        // self.schedule_cancellation(&order);
     }
 
-    // --- Cancellation Logic (Stubs - Not Implemented as per request) ---
+    fn emit_cancel_reject(&mut self, order_id: &str) {
+        let redis_tuples = vec![
+            ("action", "cancel_reject".to_string()),
+            ("id", order_id.to_string()),
+        ];
+        let _result: RedisResult<String> = self.redis_connection.xadd(&self.event_stream, "*", &redis_tuples);
+    }
 
-    #[allow(dead_code)]
-    fn cancel_immediate(&mut self, order_to_cancel: &Order) {
-        // let order_id = &order_to_cancel.id;
+    fn cancel_immediate(&mut self, order_id: &str) {
+        let order_index = match self.order_map.remove(order_id) {
+            Some(index) => index,
+            None => {
+                self.emit_cancel_reject(order_id);
+                return;
+            }
+        };
 
-        // // Attempt to remove from PQs first. Check return value.
-        // let removed_from_pq = if order_to_cancel.side == ORDER_SIDE_BUY {
-        //     self.bid_pq.remove(order_id).is_some()
-        // } else {
-        //     self.ask_pq.remove(order_id).is_some()
-        // };
+        let order: &Order =
+            match self.order_pool.get(order_index) {
+                Some(order) => order,
+                None => {
+                    self.emit_cancel_reject(order_id);
+                    return;
+                }
+            };
 
-        // // Attempt to remove from the map
-        // let removed_from_map = self.order_map.remove(order_id).is_some();
+        let removed_from_pq = match order.side.as_str() {
+            ORDER_SIDE_BUY => self.bid_pq.remove(&order_index).is_some(),
+            ORDER_SIDE_SELL => self.ask_pq.remove(&order_index).is_some(),
+            _ => false,
+        };
 
-        // if removed_from_pq || removed_from_map {
-        //     // If it was found in either structure, it was a valid resting order to cancel.
-        //     println!("Successfully cancelled order {}", order_id);
-        //     // TODO: Emit cancel success confirmation
-        //     if removed_from_pq != removed_from_map {
-        //         // This indicates a potential state inconsistency
-        //         eprintln!("Warning: Order {} cancel state inconsistent (PQ: {}, Map: {})",
-        //                   order_id, removed_from_pq, removed_from_map);
-        //     }
-        // } else {
-        //     // Order not found in book (maybe already matched, or invalid ID)
-        //     println!(
-        //         "Cancel reject for order {}: Not found in order book.",
-        //         order_id
-        //     );
-        //     // TODO: Emit cancel reject message
-        // }
+        if !removed_from_pq {
+            self.emit_cancel_reject(order_id);
+            return;
+        }
+
+        let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
+        redis_tuples.push(("action", "cancel".to_string()));
+
+        let _result: RedisResult<String> = self.redis_connection.xadd(
+            &self.event_stream,
+            "*",
+            &redis_tuples,
+        );
     }
 
     #[allow(dead_code)] // Keep function signature
@@ -391,32 +432,29 @@ impl MatchingEngine {
         // TODO: XPENDING CHECK AT BEGINNING OF MATCHING ENGINE
         // self.process_pending_messages()?; // Add a method to handle messages not acked from previous runs
 
-        let mut processed_message_ids: Vec<String> =
-            Vec::with_capacity(REDIS_READ_COUNT);
         let mut matches: Vec<Order> = Vec::with_capacity(REDIS_READ_COUNT * 2);
 
         loop {
-            let incoming_batch: Vec<(String, usize)> =
-                self.read_orders_from_stream();
-            if incoming_batch.is_empty() {
+            let (created_order_indices, handled_message_ids): (
+                Vec<usize>,
+                Vec<String>,
+            ) = self.read_orders_from_stream();
+
+            if handled_message_ids.is_empty() {
                 continue;
             }
 
-            processed_message_ids.clear();
-            for (message_id, order_index) in incoming_batch {
+            for order_index in created_order_indices {
                 self.process_order(order_index);
-                processed_message_ids.push(message_id);
             }
 
             matches = self.match_orders();
             if !matches.is_empty() {
                 self.emit_matches(&matches);
+                matches.clear();
             }
-            matches.clear();
 
-            if !processed_message_ids.is_empty() {
-                self.acknowledge_messages(&processed_message_ids);
-            }
+            self.acknowledge_messages(&handled_message_ids);
         }
     }
 }

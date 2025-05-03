@@ -1,5 +1,11 @@
 import { activeProducts, waitForRedis } from '../config/index';
-import { UserChannel, Level2Channel, TickerChannel, TickerBatchChannel, CandlesChannel } from '../models/index';
+import {
+  UserChannel,
+  Level2Channel,
+  TickerChannel,
+  TickerBatchChannel,
+  CandlesChannel,
+} from '../models/index';
 import { handleAuth } from 'messages';
 
 import type {

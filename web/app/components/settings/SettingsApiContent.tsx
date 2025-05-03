@@ -25,7 +25,7 @@ export default function SettingsApiContent() {
     try {
       console.log(`Attempting to delete key ID: ${keyIdToDelete}`);
       const response = await fetch(`${API_URL}/auth/api-key/delete`, {
-        method: "DELETE",
+        method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",

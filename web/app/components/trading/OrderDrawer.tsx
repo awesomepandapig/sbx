@@ -6,9 +6,8 @@ import { ChevronUp } from "lucide-react";
 import { API_URL } from "~/lib/config";
 import { WS_URL } from "~/lib/config";
 
-// import activeProducts
-
-const activeProducts = ["JSP", "DRG", "FRY"];
+// TODO: import activeProducts
+const activeProducts = ["JSP"];
 
 async function getToken() {
   try {
@@ -22,6 +21,21 @@ async function getToken() {
     const data = await result.json();
     return data.token;
   } catch (error) {}
+}
+
+async function cancelOrder(orderId: string, productId: string) {
+  try {
+    const response = await fetch(`${API_URL}/orders/${orderId}?product_id=${productId}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
+    if(!response.ok) {
+      throw new Error("Unable to cancel order");
+    }
+  } catch (error) {
+    // TODO: Handle error
+    console.error(error);
+  }
 }
 
 interface OrderDrawerProps {
@@ -48,21 +62,27 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      // if (!data || data.channel !== "user") return;
 
-      // const events = data.events;
-      // if (!events) return;
+      if (!data || data.channel !== "user") return;
 
-      // console.log(events);
-      console.log(data);
+      
 
-      // if(event.type == 'snapshot') {
-      //   setOrders(orders);
-      // }
+      const events = data.events;
+      if (!events) return;
 
-      // for (const event of events) {
-
-      // }
+      for(const evt of events) {
+        if(evt.type == 'snapshot') {
+          const temp = [];
+          for (const update of evt.updates) {
+            temp.push(update);
+          }
+          console.log(temp);
+          setOrders(temp);
+        }
+        if(evt.type == 'update') {
+          // TODO:
+        }
+      }
     };
   }
 
@@ -74,7 +94,7 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
       const jwt = await getToken();
       if (jwt) {
         // TODO: Uncomment
-        // createSocket(jwt);
+        createSocket(jwt);
       }
     }
 
@@ -153,7 +173,7 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
       <div className="p-4" onDoubleClick={() => setIsExpanded((prev) => !prev)}>
         <DrawerHeader />
 
-        {/* {orders.length === 0 ? (
+        {orders.length === 0 ? (
           <p className="text-gray-400 mt-4">No orders found</p>
         ) : (
           <div className="overflow-x-auto mt-4 max-h-[calc(80vh-60px)] overflow-y-auto">
@@ -171,6 +191,7 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
                     "Size",
                     "Price",
                     "Cancel After",
+                    "CANCEL_BUTTON"
                   ].map((header) => (
                     <th
                       key={header}
@@ -196,12 +217,20 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
                     <td className="px-2 py-1">{order.size}</td>
                     <td className="px-2 py-1">{order.price ?? "N/A"}</td>
                     <td className="px-2 py-1">{order.cancel_after}</td>
+                    
+                    <td className="px-2 py-1">
+                      <button className={`flex items-center text-red-400 bg-[#1E1E1E] border border-red-600 rounded p-1 text-xs`}
+                      onClick={()=> cancelOrder(order.id, order.product_id)}>
+                        CANCEL
+                      </button>
+                    </td>
+
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )} */}
+        )}
       </div>
     </motion.div>
   );

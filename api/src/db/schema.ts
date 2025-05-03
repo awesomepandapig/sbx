@@ -11,7 +11,7 @@ import {
 
 export const orderSideEnum = pgEnum('order_side', ['buy', 'sell']);
 export const orderTypeEnum = pgEnum('order_type', ['market', 'limit']);
-export const orderStatusEnum = pgEnum('order_status', ['open', 'done']);
+export const orderStatusEnum = pgEnum('order_status', ['open', 'done', 'cancelled']);
 export const cancelAfterEnum = pgEnum('cancel_after', ['min', 'hour']);
 
 export const order = pgTable('order', {
@@ -24,7 +24,7 @@ export const order = pgTable('order', {
     .references(() => user.id, { onDelete: 'cascade' }),
   side: orderSideEnum('side').notNull(),
   type: orderTypeEnum('type').notNull(),
-  created_at: integer('created_at').notNull(),
+  created_at: numeric('created_at').notNull(),
   executed_value: numeric('executed_value').notNull().default('0'),
   status: orderStatusEnum('status').notNull(),
   settled: boolean('settled').notNull(),

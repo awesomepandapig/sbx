@@ -64,10 +64,12 @@ export class CandlesChannel extends Channel {
     try {
       const parsedMessage = JSON.parse(message);
 
-      const events = [{
-        type: "update",
-        candles: [parsedMessage]
-      }]
+      const events = [
+        {
+          type: 'update',
+          candles: [parsedMessage],
+        },
+      ];
 
       // Send to all clients subscribed to this product
       for (const ws of this.subscribers) {

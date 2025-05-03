@@ -64,7 +64,7 @@ export default function AvatarMenu({ userImg }: AvatarProps) {
             />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-64 text-[13px] rounded-xl bg-[#141414] border border-gray-800 shadow-lg p-2">
+        <DropdownMenuContent className="mr-4 w-64 text-[13px] rounded-xl bg-[#141414] border border-gray-800 shadow-lg p-2">
           <DropdownMenuItem
             className="flex items-center h-11 text-white hover:bg-gray-800/80 transition-colors rounded-md cursor-pointer"
             onSelect={(e) => {

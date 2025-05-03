@@ -1,19 +1,23 @@
 import { AuthenticatedWebSocket } from './index';
 import { Channel } from './index';
 
+import { db } from 'db';
+import { order } from 'db/schema';
+import { eq, and } from 'drizzle-orm';
+
 interface Order {
   id: string;
   product_id: string;
   user_id: string;
-  side: string;
-  type: string;
+  side: 'buy' | 'sell';
+  type: 'market' | 'limit';
   created_at: string;
-  status: string;
   executed_value: string;
-  settled: string;
+  status: 'open' | 'done' | 'cancelled';
+  settled: boolean;
+  price: string | null;
+  cancel_after: 'min' | 'hour' | null;
   size: string;
-  price?: string;
-  cancel_after: string;
 }
 
 interface Event {
@@ -40,36 +44,47 @@ export class UserChannel extends Channel {
     products: Set<string>,
   ) {
     const events: Event[] = [];
-    let batch = [];
+
     for (const productId of products) {
       try {
         const userId = ws.user_id;
         if (!userId) return;
 
-        // TODO: get list of user's orders from db
-        // const orders = await redisClient.hGet('snapshot', productId);
-        // if (!orders) continue;
-        // for (const order of orders) {
-        //     if (order.status === 'open') {
-        //         batch.push(order);
-        //         if (batch.length === 50) {
-        //             events.push({
-        //                 type: 'snapshot',
-        //                 product_id: productId,
-        //                 orders: [...batch],
-        //               });
-        //               batch = [];
-        //             }
-        //     }
-        // }
-        // // Add any remaining orders to the snapshot
-        // if (batch.length > 0) {
-        //     events.push({
-        //       type: 'snapshot',
-        //       product_id: productId,
-        //       orders: [...batch],
-        //     });
-        //   }
+        // TODO: get list of user's open orders from db
+        const rows = await db
+          .select()
+          .from(order)
+          .where(
+            and(
+              eq(order.status, 'open'),
+              eq(order.user_id, userId),
+              eq(order.product_id, productId),
+            ),
+          );
+
+        const batchSize = 50;
+        let batch: Order[] = [];
+
+        for (const ord of rows) {
+          batch.push(ord);
+          if (batch.length === batchSize) {
+            events.push({
+              type: 'snapshot',
+              product_id: productId,
+              updates: [...batch],
+            });
+            batch = [];
+          }
+        }
+
+        // Add any remaining orders to the snapshot
+        if (batch.length > 0) {
+          events.push({
+            type: 'snapshot',
+            product_id: productId,
+            updates: [...batch],
+          });
+        }
       } catch (error) {
         console.error(`Failed to get snapshot for ${productId}:`, error);
       }
