@@ -1,5 +1,5 @@
 {
-  "name": "db-service",
+  "name": "tr",
   "version": "1.0.0",
   "main": "main.ts",
   "scripts": {

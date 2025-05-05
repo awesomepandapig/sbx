@@ -9,11 +9,8 @@ const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
 const REDIS_READ_COUNT: usize = 1000;
 
-pub fn read_from_streams(conn: &mut Connection, products: &Vec<String>) -> Vec<(String, Order)> {
-    let stream_names: Vec<String> = products
-        .iter()
-        .map(|p| format!("instrument:events:{}", p))
-        .collect();
+pub fn read_from_stream(conn: &mut Connection, product_id: String) -> Vec<(String, Order)> {
+    let stream_name = format!("instrument:events:{}", product_id);
 
     let results: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
     .arg("GROUP")
@@ -24,11 +21,12 @@ pub fn read_from_streams(conn: &mut Connection, products: &Vec<String>) -> Vec<(
     .arg("COUNT")
     .arg(REDIS_READ_COUNT)
     .arg("STREAMS")
-    .arg(stream_names)
+    .arg(&stream_name)
     .arg(">")
     .query(conn);
 
     let mut orders: Vec<(String, Order)> = Vec::new();
+
     let reply = match results {
         Ok(reply) => reply,
         Err(err) => {
@@ -44,7 +42,9 @@ pub fn read_from_streams(conn: &mut Connection, products: &Vec<String>) -> Vec<(
                 Ok(order) => {
                     orders.push((message_id, order));
                 }
-                Err(_) => todo!(),
+                Err(err) => {
+                    eprintln!("Failed to parse order from Redis map: {:?}", err);
+                }
             }
         }
     }

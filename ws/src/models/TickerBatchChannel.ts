@@ -39,7 +39,7 @@ export class TickerBatchChannel extends Channel {
       const events: Event[] = [
         {
           type: 'update',
-          tickers: [parsedMessage],
+          tickers: parsedMessage,
         },
       ];
 

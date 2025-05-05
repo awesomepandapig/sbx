@@ -24,7 +24,6 @@ impl OrderBook {
         let price = order.price.expect("Limit orders must have a price");
         let quantity = map.entry(price).or_insert(0);
         *quantity += order.size;
-        // TODO: update book snapshot in redis
         return *quantity;
     }
 

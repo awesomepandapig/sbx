@@ -7,9 +7,8 @@ mod utils;
 use order_book::OrderBook;
 use ticker::TickerService;
 // use candle::CandleService;
-use utils::{acknowledge, read_from_streams};
+use utils::{acknowledge, read_from_stream};
 
-use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::time::{Duration, Instant};
@@ -81,24 +80,18 @@ fn level2(
 
 fn main() -> Result<(), Box<dyn Error>> {
     // TODO: Handle REDIS_TLS configuration
-    let redis_url: String = env::var("REDIS_URL")?;
-    println!("Connecting to Redis at: {}", redis_url);
+    let redis_url: String = env::var("REDIS_URL").expect("REDIS_URL environment variable not set");
+    let product_id: String = env::var("PRODUCT_ID").expect("PRODUCT_ID environment variable not set");
 
+    println!("Connecting to Redis at: {}", redis_url);
     let client: Client = Client::open(redis_url)?;
     let mut conn: Connection = client.get_connection()?;
 
-    // TODO: Fetch this dynamically from Redis/DB/Config file
-    let products = vec!["JSP".to_string()];
-
-    let mut order_books: HashMap<String, OrderBook> = HashMap::new();
-    let mut ticker_service = TickerService::new(products.clone());
-    // let mut candle_service = CandleService::new(products.clone());
-
     // Initialize state for each product
-    for product_id in &products {
-        order_books.insert(product_id.clone(), OrderBook::new());
-    }
-    println!("Initialized state for products: {:?}", products);
+    let mut book = OrderBook::new();
+    let mut ticker_service = TickerService::new(product_id.clone());
+
+    // let mut candle_service = CandleService::new(products.clone());
 
     // TODO: startup (rebuild the book)
 
@@ -106,34 +99,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut last_batch_emit = Instant::now();
 
     loop {
-        let orders = read_from_streams(&mut conn, &products);
+        let orders = read_from_stream(&mut conn, product_id.clone());
 
         if orders.is_empty() {
             if last_batch_emit.elapsed() >= batch_interval {
-                ticker_service.emit_batch(&mut conn, &order_books);
+                ticker_service.emit_batch(&mut conn, &book);
                 last_batch_emit = Instant::now();
             }
             continue;
         }
 
         for (message_id, order) in orders {
-            let product_id = order.product_id.clone();
-            let stream_name = format!("instrument:events:{}", product_id);
+            let stream_name = format!("instrument:events:{}", &product_id);
 
-            // Get mutable access to the order book for this product
-            let book = match order_books.get_mut(&product_id) {
-                Some(b) => b,
-                None => {
-                    eprintln!(
-                        "[{}] Received event for unknown or inactive product. Skipping.",
-                        product_id
-                    );
-                    acknowledge(&mut conn, &stream_name, &message_id); // Acknowledge to prevent reprocessing
-                    continue; // Skip this order
-                }
-            };
-
-            let price = order.price.unwrap_or(0); // TODO: Default to 0 if no price? Or handle error?
+            let price = order.price.unwrap_or(0);
             let mut quantity_change = 0;
 
             match order.action.as_str() {
@@ -169,7 +148,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         ticker_service.process_match(&order);
                         // candle_service.process_match(&order);
                     }
-                    ticker_service.emit_individual(&mut conn, &product_id, book);
+                    ticker_service.emit_individual(&mut conn, &book);
                 }
                 "cancel" => {
                     // Cancellation removes liquidity
@@ -200,7 +179,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if last_batch_emit.elapsed() >= batch_interval {
-            ticker_service.emit_batch(&mut conn, &order_books);
+            ticker_service.emit_batch(&mut conn, &book);
             last_batch_emit = Instant::now();
         }
     }

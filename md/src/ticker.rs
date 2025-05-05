@@ -4,7 +4,6 @@ use chrono::{Datelike, Duration, TimeZone, Utc};
 use redis::{Commands, Connection, RedisResult};
 use serde::Serialize;
 use serde_json;
-use std::collections::HashMap;
 // use std::time::{Duration as StdDuration, Instant}; // For batch timing
 
 #[derive(Serialize, Debug, Clone)]
@@ -126,7 +125,6 @@ impl TickerState {
             self.low_24_h = self.low_24_h.min(price);
             self.high_24_h = self.high_24_h.max(price);
             if self.open_24_hr == 0 {
-                // Set open on first trade of the day
                 self.open_24_hr = price;
             }
 
@@ -143,7 +141,7 @@ impl TickerState {
         return 0.0;
     }
 
-    fn create_ticker_snapshot(&self, book: &OrderBook, timestamp: i64) -> Ticker {
+    fn create_ticker(&self, book: &OrderBook, timestamp: i64) -> Ticker {
         let (best_bid, best_bid_quantity) = book
             .get_best_bid()
             .map(|(p, q)| (*p, *q))
@@ -195,91 +193,68 @@ impl TickerState {
 }
 
 pub struct TickerService {
-    states: HashMap<String, TickerState>,
-    // Batch channel can be constant or configurable
+    product_id: String,
+    state: TickerState,
     batch_channel_name: String,
 }
 
 impl TickerService {
-    pub fn new(products: Vec<String>) -> Self {
-        let mut states = HashMap::new();
-        for product_id in products {
-            states.insert(product_id.clone(), TickerState::new(product_id));
-        }
+    pub fn new(product_id: String) -> Self {
+        let state = TickerState::new(product_id.clone());
+        let batch_channel_name = format!("marketdata:ticker_batch:{}", product_id);
         return Self {
-            states,
-            batch_channel_name: "marketdata:ticker_batch:all".to_string(), // Global batch channel
+            product_id,
+            state,
+            batch_channel_name,
         };
     }
 
+    // TODO: This error checking may be unnecessary
     pub fn process_match(&mut self, order: &Order) {
-        if let Some(state) = self.states.get_mut(&order.product_id) {
-            state.update_on_match(order);
+        if order.product_id == self.product_id {
+            self.state.update_on_match(order);
         } else {
-            // Should not happen if main loop checks product validity
             eprintln!(
-                "[TickerService] Received match for unknown product: {}",
+                "[TickerService] Ignored order with mismatched product_id: {}",
                 order.product_id
             );
         }
     }
 
-    pub fn emit_individual(&mut self, conn: &mut Connection, product_id: &str, book: &OrderBook) {
-        if let Some(state) = self.states.get_mut(product_id) {
-            let now = Utc::now().timestamp();
-            // Optional: Ensure windows are up-to-date before emitting
-            // state.check_and_reset_windows(now);
-            let ticker = state.create_ticker_snapshot(book, now);
-            let channel_name = format!("marketdata:ticker:{}", product_id);
+    pub fn emit_individual(&mut self, conn: &mut Connection, book: &OrderBook) {
+        let now = Utc::now().timestamp();
+        let ticker = self.state.create_ticker(book, now);
+        let channel_name = format!("marketdata:ticker:{}", self.product_id);
 
-            match serde_json::to_string(&ticker) {
-                Ok(json_payload) => {
-                    let result: RedisResult<i64> = conn.publish(channel_name, json_payload);
-                    if let Err(e) = result {
-                        eprintln!("Failed to publish Ticker update to Redis");
-                    }
+        match serde_json::to_string(&ticker) {
+            Ok(json_payload) => {
+                let result: RedisResult<i64> = conn.publish(channel_name, json_payload);
+                if let Err(e) = result {
+                    eprintln!("Failed to publish individual ticker: {}", e);
                 }
-                Err(e) => {
-                    eprintln!("[{}] Failed to serialize TickerData: {}", product_id, e);
-                }
+            }
+            Err(e) => {
+                eprintln!("Serialization error for individual ticker: {}", e);
             }
         }
     }
 
-    // TODO: CHANGE TO EMIT BATCH PER PRODUCT
-    // marketdata:ticker_batch:JSP
-    pub fn emit_batch(&mut self, conn: &mut Connection, order_books: &HashMap<String, OrderBook>) {
+    
+    pub fn emit_batch(&mut self, conn: &mut Connection, book: &OrderBook) {
         let now = Utc::now().timestamp();
-        let mut batch_payloads: Vec<Ticker> = Vec::with_capacity(self.states.len());
+        self.state.check_and_reset_windows(now);
 
-        for (product_id, state) in self.states.iter_mut() {
-            // Ensure state's time windows are current before creating snapshot
-            state.check_and_reset_windows(now);
-
-            // Get the corresponding order book
-            if let Some(book) = order_books.get(product_id) {
-                let ticker = state.create_ticker_snapshot(book, now);
-                batch_payloads.push(ticker);
-            } else {
-                eprintln!("[TickerService] No order book found for product '{}' during batch emit. Skipping.", product_id);
-                // TODO: Optionally create a default/empty ticker?
-            }
-        }
-
-        if batch_payloads.is_empty() {
-            return;
-        }
-
-        match serde_json::to_string(&batch_payloads) {
+        let ticker = self.state.create_ticker(book, now);
+        match serde_json::to_string(&vec![ticker]) {
             Ok(json_payload) => {
                 let result: RedisResult<i64> =
-                    conn.publish(self.batch_channel_name.clone(), json_payload);
+                    conn.publish(&self.batch_channel_name, json_payload);
                 if let Err(e) = result {
-                    eprintln!("Failed to publish TickerBatch update to Redis");
+                    eprintln!("Failed to publish ticker batch: {}", e);
                 }
             }
             Err(e) => {
-                eprintln!("Failed to serialize TickerBatchData");
+                eprintln!("Serialization error for ticker batch: {}", e);
             }
         }
     }

@@ -4,46 +4,50 @@
   <img width="1507" src="https://github.com/user-attachments/assets/2cab6199-5f6e-4a54-af00-5906d71e0af8" />
 </p>
 <p align="center">
-  SBX is a financial exchange for Hypixel SkyBlock Structures
+  A real-time, low-latency exchange built for Hypixel SkyBlock
 </p>
 
 ## Overview
 
-SBX provides a high-performance trading platform for Hypixel SkyBlock, featuring real-time order matching, market data streaming, and a responsive user interface. The platform processes thousands of orders per second, ensuring a seamless trading experience for users while maintaining a robust and scalable architecture.
+SBX is a high-performance trading platform designed specifically for Hypixel SkyBlock. The system architecture follows modern exchange design principles with horizontally scalable microservices communicating through Redis Streams (for event sourcing) and Pub/Sub (for low-latency broadcasting).
 
-- **Website**: [https://skyblock.exchange](https://skyblock.exchange)
-- **Documentation**: [https://skyblock.exchange/docs/](https://skyblock.exchange/docs/)
-- **Status**: [https://status.skyblock.exchange](https://status.skyblock.exchange)
+| Component        | Folder          | Language   | Description                                                                                                              |
+| ---------------- | --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Matching Engine  | [`/me`](./me)   | Rust   | High-performance in-memory matching engine; processes thousands of orders per second with sub-millisecond latency. Emits trade events and writes to Redis Streams for durability          |
+| Market Data Feed | [`/md`](./md)   | Rust   | Consumes trade events and maintains an up-to-date market state (tickers, order book snapshots) for broadcasting to clients |
+| REST API         | [`/api`](./api) | TypeScript | Stateless HTTP layer for order lifecycle management and account operations                                                         |
+| WebSocket Server | [`/ws`](./ws)   | TypeScript | Pushes real-time updates (orders, trades, tickers) to clients using efficient subscription-based routing                       |
+| Client Interface | [`/web`](./web) | TypeScript | React + Remix frontend featuring intuitive trading interfaces, market visualization, and account management                                           |
 
-## Core Components
+## Technologies & Design Principles
 
-SBX is built from modular services communicating over Redis Streams and Pub/Sub. Each component runs independently and is designed for horizontal scaling.
+| Layer               | Tech Stack                 | Notes                                                               |
+| ------------------- | -------------------------- | ------------------------------------------------------------------- |
+| **Matching Engine** | Rust                       | Zero-GC, predictable performance with minimal latency jitter |
+| **Market Data**     | Rust                       | Push-based event handling, consistent state derivation from streams |
+| **Data Transport**  | Redis Streams + Pub/Sub    | Durable event bus for service decoupling, reliable delivery, and fan-out operations        |
+| **Persistence**     | TimescaleDB + Drizzle ORM  | Time-series storage for candles; relational storage for account and order data   |
+| **API Layer**       | Node.js + TypeScript + Zod | Type-safe API design with comprehensive request validation |
+| **Frontend**        | Remix + TailwindCSS + Vite | Server-side rendering for optimal performance |
 
-| Component        | Folder                          | Language       | Description |
-|------------------|----------------------------------|----------------|-------------|
-| Matching Engine  | [`/me`](./me)                    | Rust           | Handles order matching, emits trade events, and persists matches to Redis Streams |
-| Market Data      | [`/md`](./md)                    | Rust           | Listens to trade streams and broadcasts real-time market data (ticker, order book, trades) |
-| API              | [`/api`](./api)                  | TypeScript     | REST API for order creation, cancellation, and user management |
-| WebSocket Server | [`/ws`](./ws)                    | TypeScript     | Pushes real-time order updates and market changes to clients |
-| Website (Client) | [`/web`](./web)                  | TypeScript     | Frontend for placing orders, monitoring markets, and viewing account activity in real time |
 
-## Tech Stack
+## Engineering Highlights
 
-| Layer           | Stack                                  |
-|-----------------|----------------------------------------|
-| Matching Engine | Rust                                   |
-| Message bus     | Redis Pub/Sub / Streams                |
-| Database        | TimescaleDB (PostgreSQL) + Drizzle ORM |
-| API             | Node.js, TypeScript, BetterAuth        |
-| Frontend        | Remix, TailwindCSS, Vite               |
+* **In-Memory Order Matching**
+  
+  Built in Rust for speed and predictability, the matching engine processes and matches thousands of orders/sec with sub-millisecond latency, implementing a price-time priority model for fair execution.
 
-## Key Features
+* **Event-Sourced Architecture**
+  
+  Trade and order lifecycle events are stored in Redis Streams, enabling complete auditability, system recovery, and decoupled state reconstruction across services.
 
-- **High-Performance Trading**: Process thousands of orders per second with minimal latency
-- **Real-Time Market Data**: Live order book updates, trade history, and ticker information
-- **WebSocket API**: Real-time data streaming for developers
-- **Horizontal Scalability**: All components designed to scale independently
+* **Scalable Market Data Distribution**
+  
+  Market state is derived from the event stream and efficiently broadcast via WebSockets with channel-based subscription management, ensuring clients receive only relevant updates.
+
+* **Fault Isolation**
+  
+  Services are independently deployable and restartable, allowing horizontal scale-out and minimal blast radius in case of failure. The system maintains partial functionality even when individual components are down.
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE.txt) file for details.
+This project is licensed under the MIT License — see [LICENSE](./LICENSE.txt) for details.

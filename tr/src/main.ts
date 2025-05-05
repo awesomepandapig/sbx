@@ -46,7 +46,6 @@ async function readFromStream(client: ClientType, productId: string): Promise<[s
     return orders;
 }
 
-// TODO: TYPE it to order
 async function insertOrder(fields: Record<string, string>) {
     const data = parseOrder(fields);
     const parsed = orderInsertSchema.parse(data);

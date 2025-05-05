@@ -2,6 +2,11 @@ import { NextFunction, Request, Response } from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth';
 
+const ERR_BAD_REQUEST = 'Bad Request'; // 400
+const ERR_UNAUTHORIZED = 'Unauthorized'; // 401
+const ERR_FORBIDDEN = 'Forbidden'; // 403
+const ERR_INTERNAL_SERVER = 'Internal Server Error'; // 500
+
 export const authenticate = async (
   req: Request,
   res: Response,
@@ -13,7 +18,7 @@ export const authenticate = async (
     });
 
     if (!session) {
-      res.status(401).json({ error: 'Unauthorized' }); // TODO: EDIT ERROR MESSAGE
+      res.status(401).json({ message: ERR_UNAUTHORIZED });
       return;
     }
 
@@ -21,8 +26,12 @@ export const authenticate = async (
     res.locals.session = session;
     next();
   } catch (error) {
-    console.error('Authentication error:', error); // TODO: EDIT ERROR MESSAGE
-    res.status(500).json({ error: 'Internal Server Error' }); // TODO: EDIT ERROR MESSAGE
-    return;
+    if(error.statusCode && error.statusCode == '401') {
+      res.status(401).json({ message: ERR_UNAUTHORIZED });
+      return;
+    } else {
+      console.error(error);
+      res.status(500).json({ message: ERR_INTERNAL_SERVER });
+    }
   }
 };
