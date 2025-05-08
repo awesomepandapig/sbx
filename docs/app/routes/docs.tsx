@@ -3,7 +3,7 @@ import { Outlet } from "@remix-run/react";
 import Header from "~/components/docs/Header";
 import LeftSidebar from "~/components/docs/LeftSidebar";
 
-export default function DocsLayout() {
+export default function Home() {
   return (
     <>
       <Header />

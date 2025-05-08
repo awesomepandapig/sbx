@@ -12,10 +12,10 @@ export default function Header() {
           <a href="/docs/getting-started" className="py-4 text-sm font-medium">
             Get Started
           </a>
-          <a href="#" className="py-4 text-sm font-medium">
+          <a href="/docs/api-endpoints" className="py-4 text-sm font-medium">
             API Reference
           </a>
-          <a href="#" className="py-4 text-sm font-medium">
+          <a href="/docs/ws-channels" className="py-4 text-sm font-medium">
             WebSocket
           </a>
         </div>

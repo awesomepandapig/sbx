@@ -1,3 +1,5 @@
+import { DOCS_URL } from "~/lib/config";
+
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -75,7 +77,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="/docs"
+                  href={`${DOCS_URL}`}
                   className="text-gray-400 hover:text-white transition-colors duration-200 ease-in-out"
                 >
                   Documentation
@@ -83,7 +85,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="/docs/api"
+                  href={`${DOCS_URL}/docs/api-endpoints`}
                   className="text-gray-400 hover:text-white transition-colors duration-200 ease-in-out"
                 >
                   API Reference
@@ -91,7 +93,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="/docs/use-cases"
+                  href={`${DOCS_URL}/docs/use-cases`}
                   className="text-gray-400 hover:text-white transition-colors duration-200 ease-in-out"
                 >
                   Use Cases

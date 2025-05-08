@@ -1,3 +1,4 @@
+import { DOCS_URL } from "~/lib/config";
 import TickerCard from "./TickerCard";
 
 const marketData = [
@@ -61,7 +62,7 @@ export default function Hero() {
               Start Trading
             </button>
           </a>
-          <a href="/docs">
+          <a href={`${DOCS_URL}`}>
             <button className="border bg-[rgba(38,38,38,.7)] border-gray-700 hover:bg-gray-700/80 duration-300 h-12 text-white px-4 py-2 rounded-full">
               Explore Docs
             </button>

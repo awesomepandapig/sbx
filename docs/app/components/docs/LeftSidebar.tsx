@@ -29,7 +29,7 @@ export default function LeftSidebar() {
             </a>
           </li>
           <li>
-            <a href="#" className="">
+            <a href="/docs/api-authentication" className="">
               Authentication
             </a>
           </li>
@@ -51,7 +51,7 @@ export default function LeftSidebar() {
             </a>
           </li>
           <li>
-            <a href="#" className="">
+            <a href="/docs/ws-authentication" className="">
               Authentication
             </a>
           </li>

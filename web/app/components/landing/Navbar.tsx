@@ -1,3 +1,4 @@
+import { DOCS_URL } from "~/lib/config";
 import DiscordButton from "~/components/landing/DiscordButton";
 
 export default function Navbar() {
@@ -7,7 +8,7 @@ export default function Navbar() {
         <div className="text-lg font-medium text-[#dfdfd6]">SBX</div>
         <div className="flex space-x-6 items-center">
           <a
-            href="/docs"
+            href={`${DOCS_URL}`}
             className="text-[#dfdfd6] hover:text-blue-400 text-sm transition duration-300"
           >
             Docs
