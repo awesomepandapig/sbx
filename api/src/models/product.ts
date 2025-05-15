@@ -15,7 +15,20 @@ export async function getProducts(): Promise<Product[]> {
   }));
 }
 
+let productCache: Set<string>;
+let lastFetched = 0;
+const CACHE_DURATION_MS = 30_000; // 30 seconds
+
+async function refreshProductCache(): Promise<Set<string>> {
+  const products = await db.select().from(product);
+  productCache = new Set(products.map((p) => p.id));
+  lastFetched = Date.now();
+  return productCache;
+}
+
 export async function validateProduct(product_id: string): Promise<boolean> {
-  const products = await getProducts();
-  return products.some((product) => product.id === product_id);
+  if (!productCache || Date.now() - lastFetched > CACHE_DURATION_MS) {
+    await refreshProductCache();
+  }
+  return productCache.has(product_id);
 }

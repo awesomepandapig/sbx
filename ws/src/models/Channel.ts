@@ -8,7 +8,8 @@ import {
 } from 'models/index';
 
 export abstract class Channel {
-  protected subscribers: Set<AuthenticatedWebSocket> = new Set();
+  protected subscribers = new Set<AuthenticatedWebSocket>();
+
   protected redisPubSub!: RedisClient<
     RedisModules,
     RedisFunctions,
@@ -16,13 +17,6 @@ export abstract class Channel {
   >;
 
   constructor(protected channels: string[]) {}
-
-  protected static createInstance<T extends Channel>(
-    this: new (channels: string[]) => T,
-    channels: string[],
-  ): T {
-    return new this(channels);
-  }
 
   public static async initialize<T extends Channel>(
     this: new (channels: string[]) => T,
@@ -33,15 +27,20 @@ export abstract class Channel {
     const redisPubSub = await redisSubscriber.duplicate();
     await redisPubSub.connect();
 
-    const channel = this.createInstance(channels);
+    const channel = new this(channels);
     channel.redisPubSub = redisPubSub;
 
-    for (const channelName of channels) {
-      await redisPubSub.subscribe(channelName, async (message, channelName) => {
-        await channel.handleUpdate(message, channelName);
-      });
-      console.log(`${channelName} channel initialized`);
-    }
+    await Promise.all(
+      channels.map((channelName) =>
+        redisPubSub
+          .subscribe(channelName, async (message, channelName) => {
+            await channel.handleUpdate(message, channelName);
+          })
+          .then(() => {
+            console.log(`${channelName} channel initialized`);
+          }),
+      ),
+    );
 
     return channel;
   }
@@ -65,7 +64,7 @@ export abstract class Channel {
     }
 
     // Get the current subscription
-    const channelSubscriptions = ws.subscriptions.get(channel)!;
+    const channelSubscriptions = ws.subscriptions.get(channel);
     if (!channelSubscriptions) return new Set();
 
     // Add the products to the subscription list and track new ones
@@ -113,7 +112,7 @@ export abstract class Channel {
 
   public unsubscribe(ws: AuthenticatedWebSocket, message: UnsubscribeMessage) {
     const channel = message.channel;
-    let products = new Set(message.product_ids);
+    const products = new Set(message.product_ids);
 
     // Get the current subscription
     const channelSubscriptions = ws.subscriptions.get(channel);

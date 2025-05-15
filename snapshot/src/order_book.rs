@@ -2,10 +2,11 @@ use super::order::Order;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct OrderBook {
     pub bids: BTreeMap<i64, i64>,
     pub asks: BTreeMap<i64, i64>,
+    pub sequence_num: String
 }
 
 impl OrderBook {
@@ -13,6 +14,7 @@ impl OrderBook {
         Self {
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
+            sequence_num: "".to_string(),
         }
     }
 
@@ -54,13 +56,5 @@ impl OrderBook {
                 );
             }
         }
-    }
-
-    pub fn get_best_bid(&self) -> Option<(&i64, &i64)> {
-        self.bids.last_key_value() // maximum key
-    }
-
-    pub fn get_best_ask(&self) -> Option<(&i64, &i64)> {
-        self.asks.first_key_value() // minimum key
     }
 }

@@ -6,8 +6,8 @@ use redis::{Commands, Connection, RedisResult};
 const CONSUMER_GROUP_NAME: &'static str = "market-data-service";
 const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
 
-const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
-const REDIS_READ_COUNT: usize = 1000;
+const REDIS_BLOCK_TIMEOUT_MS: usize = 50;
+const REDIS_READ_COUNT: usize = 10000;
 
 pub fn read_from_stream(conn: &mut Connection, product_id: String) -> Vec<(String, Order)> {
     let stream_name = format!("instrument:events:{}", product_id);
@@ -51,6 +51,6 @@ pub fn read_from_stream(conn: &mut Connection, product_id: String) -> Vec<(Strin
     return orders;
 }
 
-pub fn acknowledge(conn: &mut Connection, stream_name: &str, message_id: &str) {
-    let _: RedisResult<i64> = conn.xack(stream_name, CONSUMER_GROUP_NAME, &[message_id]);
+pub fn acknowledge(conn: &mut Connection, stream_name: &str, message_ids: Vec<String>) {
+    let _: RedisResult<i64> = conn.xack(stream_name, CONSUMER_GROUP_NAME, &message_ids);
 }

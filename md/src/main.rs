@@ -4,6 +4,7 @@ mod ticker;
 // mod candle;
 mod utils;
 
+use order::Order;
 use order_book::OrderBook;
 use ticker::TickerService;
 // use candle::CandleService;
@@ -13,6 +14,7 @@ use std::env;
 use std::error::Error;
 use std::time::{Duration, Instant};
 
+use chrono::{Utc, SecondsFormat};
 use redis::{Client, Commands, Connection, RedisResult};
 use serde::Serialize;
 use serde_json;
@@ -40,24 +42,26 @@ use serde_json;
 
 #[derive(Serialize)]
 struct L2Data {
+    message_id: String,
     side: String,
-    event_time: i64,
+    event_time: String,
     price_level: i64,
     new_quantity: i64,
 }
 
 fn level2(
     conn: &mut Connection,
+    message_id: &str,
     product_id: &str,
     side: &str,
-    created_at: i64,
     price_level: i64,
     new_quantity: i64,
 ) {
     let channel_name = format!("marketdata:level2:{}", product_id);
     let l2_data = L2Data {
+        message_id: message_id.to_string(),
         side: side.to_string(),
-        event_time: created_at,
+        event_time: Utc::now().to_rfc3339_opts(SecondsFormat::Nanos, true),
         price_level,
         new_quantity,
     };
@@ -109,36 +113,33 @@ fn main() -> Result<(), Box<dyn Error>> {
             continue;
         }
 
-        for (message_id, order) in orders {
-            let stream_name = format!("instrument:events:{}", &product_id);
+        let mut ack_ids = Vec::new();
 
+        for (message_id, order) in orders {
             let price = order.price.unwrap_or(0);
-            let mut quantity_change = 0;
 
             match order.action.as_str() {
                 "create" => {
                     if order.r#type == "limit" {
-                        quantity_change = book.add_order(&order);
+                        let quantity_change = book.add_order(&order);
                         level2(
                             &mut conn,
+                            &message_id,
                             &product_id,
                             &order.side,
-                            order.created_at,
                             price,
                             quantity_change,
                         );
-                    } else {
-                        // TODO: Handle market order additions if necessary (e.g., logging)
                     }
                 }
                 "match" => {
                     // A match reduces liquidity on the book side specified in the order
-                    quantity_change = book.remove_order(&order);
+                    let quantity_change = book.remove_order(&order);
                     level2(
                         &mut conn,
+                        &message_id,
                         &product_id,
                         &order.side,
-                        order.created_at,
                         price,
                         quantity_change,
                     );
@@ -152,12 +153,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 "cancel" => {
                     // Cancellation removes liquidity
-                    quantity_change = book.remove_order(&order);
+                    let quantity_change = book.remove_order(&order);
                     level2(
                         &mut conn,
+                        &message_id,
                         &product_id,
                         &order.side,
-                        order.created_at,
                         price,
                         quantity_change,
                     );
@@ -175,7 +176,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             // Emit candle every second
             // candle_service.emit_individual(&mut conn, &product_id);
 
-            acknowledge(&mut conn, &stream_name, &message_id);
+            ack_ids.push(message_id);
+        }
+
+        let stream_name = format!("instrument:events:{}", &product_id);
+        if !ack_ids.is_empty() {
+            acknowledge(&mut conn, &stream_name, ack_ids);
         }
 
         if last_batch_emit.elapsed() >= batch_interval {

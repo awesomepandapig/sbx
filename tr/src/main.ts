@@ -18,7 +18,7 @@ const REDIS_READ_COUNT = 1000;
 type ClientType = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 
 async function readFromStream(client: ClientType, productId: string): Promise<[string, Record<string, string>][]> {
-    let streamName = `instrument:events:${productId}`;
+    const streamName = `instrument:events:${productId}`;
 
     const results = await client.xReadGroup(
         CONSUMER_GROUP_NAME,
@@ -74,7 +74,7 @@ async function main() {
             continue;
         }
 
-        for (let [messageId, ord] of orders) {
+        for (const [messageId, ord] of orders) {
             const streamName = `instrument:events:${productId}`;
             switch (ord.action) {
                 case "create":

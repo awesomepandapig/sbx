@@ -27,7 +27,6 @@
 // impl CandleBuilder {
 //     pub fn new(product_id: String) -> Self {
 //         let channel = format!("{}:{}:{}", "marketdata", "candles", product_id);
-        
 
 //         // TODO: Load cached_start from Redis
 //         // let now = Utc::now().timestamp();

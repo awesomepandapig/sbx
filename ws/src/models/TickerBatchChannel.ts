@@ -1,4 +1,3 @@
-import { AuthenticatedWebSocket } from './index';
 import { Channel } from './index';
 
 interface Ticker {

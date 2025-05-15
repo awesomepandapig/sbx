@@ -15,7 +15,7 @@ export const authenticate = async (
       issuer: ISSUER,
     });
     return { authenticated: true, user_id: payload.sub };
-  } catch (error) {
+  } catch {
     return { authenticated: false };
   }
 };
