@@ -11,7 +11,11 @@ import {
 
 export const orderSideEnum = pgEnum('order_side', ['buy', 'sell']);
 export const orderTypeEnum = pgEnum('order_type', ['market', 'limit']);
-export const orderStatusEnum = pgEnum('order_status', ['open', 'done', 'cancelled']);
+export const orderStatusEnum = pgEnum('order_status', [
+  'open',
+  'done',
+  'cancelled',
+]);
 export const cancelAfterEnum = pgEnum('cancel_after', ['min', 'hour']);
 
 export const order = pgTable('order', {

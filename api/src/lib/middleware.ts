@@ -26,7 +26,7 @@ export const authenticate = async (
     res.locals.session = session;
     next();
   } catch (error) {
-    if(error.statusCode && error.statusCode == '401') {
+    if (error.statusCode && error.statusCode == '401') {
       res.status(401).json({ message: ERR_UNAUTHORIZED });
       return;
     } else {

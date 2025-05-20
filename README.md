@@ -50,4 +50,16 @@ SBX is a high-performance trading platform designed specifically for Hypixel Sky
   Services are independently deployable and restartable, allowing horizontal scale-out and minimal blast radius in case of failure. The system maintains partial functionality even when individual components are down.
 
 ## License
-This project is licensed under the MIT License — see [LICENSE](./LICENSE.txt) for details.
+
+This project is dual-licensed under either:
+
+* [MIT License](./LICENSE-MIT)
+* [Apache License 2.0](./LICENSE-APACHE)
+
+You may choose either license.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in SBX by you shall be dual-licensed as above, without any additional
+terms or conditions.

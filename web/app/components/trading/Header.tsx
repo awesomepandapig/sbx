@@ -66,7 +66,7 @@ const StatBlock = ({
 );
 
 const SymbolSelect = ({ symbol }: { symbol: string }) => (
-  <div className="mr-8 bg-gray-800 p-2 rounded-full flex items-center">
+  <div className="mr-8 bg-[#1E1E1E] border border-[#2a2a2a] p-2 rounded-full flex items-center">
     <div className="flex items-center">
       <div className="flex-row flex">
         <div className="w-8 h-8 rounded-full bg-blue-500 z-10">
@@ -140,11 +140,14 @@ export default function Header({ symbol, userImg }: HeaderProps) {
             priceChange={tickerData?.price_percent_chg_24_h}
             className="min-w-[20ch]"
           />
-          <StatBlock label="24H Volume" value={
-  tickerData?.price && tickerData?.volume_24_h
-    ? Number(tickerData.price) * Number(tickerData.volume_24_h)
-    : undefined
-} />
+          <StatBlock
+            label="24H Volume"
+            value={
+              tickerData?.price && tickerData?.volume_24_h
+                ? Number(tickerData.price) * Number(tickerData.volume_24_h)
+                : undefined
+            }
+          />
           <StatBlock label="24H High" value={tickerData?.high_24_h} />
           <StatBlock label="24H Low" value={tickerData?.low_24_h} />
         </div>

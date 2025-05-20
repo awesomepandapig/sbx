@@ -6,13 +6,11 @@ use order_book::OrderBook;
 use utils::{acknowledge, read_from_stream};
 
 use std::env;
-use std::error::Error;
 
-use chrono::{Utc, SecondsFormat};
-use redis::{Client};
+use chrono::{SecondsFormat, Utc};
+use redis::Client;
 use redis::aio::MultiplexedConnection;
 use serde::Serialize;
-use serde_json;
 
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -21,14 +19,11 @@ use std::sync::Arc;
 use http_body_util::Full;
 use hyper::body::{Bytes, Incoming};
 use hyper::server::conn::http1;
-use hyper::service::Service;
 use hyper::{Request, Response, header};
 
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-
-use tower::ServiceBuilder;
 
 // pub fn startup() {
 //     // Read the entire stream until the last acknowledged message to rebuild the book
@@ -53,7 +48,10 @@ struct L2Data {
     new_quantity: i64,
 }
 
-async fn snapshot(req: Request<Incoming>, book: Arc<RwLock<OrderBook>>) -> Result<Response<Full<Bytes>>, Infallible> {
+async fn snapshot(
+    req: Request<Incoming>,
+    book: Arc<RwLock<OrderBook>>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
     if req.method() != hyper::Method::GET {
         return Ok(Response::builder()
             .status(405)
@@ -63,7 +61,7 @@ async fn snapshot(req: Request<Incoming>, book: Arc<RwLock<OrderBook>>) -> Resul
 
     let event_time: String = Utc::now().to_rfc3339_opts(SecondsFormat::Nanos, true);
     let mut updates: Vec<L2Data> = Vec::new();
-    let mut sequence_num: String;
+    let sequence_num: String;
 
     {
         let book_guard = book.read().await;
@@ -120,10 +118,10 @@ async fn build_book_loop(
         for (message_id, order) in &orders {
             match order.action.as_str() {
                 "create" if order.r#type == "limit" => {
-                    book_guard.add_order(&order);
+                    book_guard.add_order(order);
                 }
                 "match" | "cancel" => {
-                    book_guard.remove_order(&order);
+                    book_guard.remove_order(order);
                 }
                 _ => {
                     eprintln!("Unknown order action: {}", order.action);
@@ -131,7 +129,7 @@ async fn build_book_loop(
             }
 
             let stream_name = format!("instrument:events:{}", &product_id);
-            acknowledge(&mut conn, &stream_name, &message_id).await;
+            acknowledge(&mut conn, &stream_name, message_id).await;
         }
 
         if let Some((message_id, _)) = orders.last() {
@@ -143,7 +141,7 @@ async fn build_book_loop(
 }
 
 #[tokio::main]
-async fn main() ->  Result<(), Box<dyn std::error::Error + Send + Sync>>  {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // TODO: Handle REDIS_TLS configuration
     let redis_url: String = env::var("REDIS_URL").expect("REDIS_URL environment variable not set");
     let product_id: String =
@@ -151,7 +149,7 @@ async fn main() ->  Result<(), Box<dyn std::error::Error + Send + Sync>>  {
 
     println!("Connecting to Redis at: {}", redis_url);
     let client: Client = Client::open(redis_url)?;
-    let mut conn: MultiplexedConnection = client.get_multiplexed_async_connection().await?;
+    let conn: MultiplexedConnection = client.get_multiplexed_async_connection().await?;
 
     // TODO: startup (rebuild the book)
 

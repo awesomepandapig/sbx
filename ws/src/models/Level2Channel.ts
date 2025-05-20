@@ -20,11 +20,11 @@ interface BufferedUpdateItem {
   update: Update;
 }
 
-type WSState = {
+interface WSState {
   snapshottedProducts: Set<string>;
   updateBuffer: BufferedUpdateItem[];
   sequenceMap: Map<string, string>;
-};
+}
 
 function isSeqAfter(a: string, b: string): boolean {
   const [aTime, aSeq] = a.split('-').map(Number);
@@ -89,8 +89,6 @@ export class Level2Channel extends Channel {
       );
 
       if (buffered.length > 0) {
-        console.log(buffered.length);
-
         const updates: Event = {
           type: 'update',
           product_id: productId,
@@ -163,7 +161,7 @@ export class Level2Channel extends Channel {
           // #2 continued: Queue updates in memory until snapshot is sent
           // Hard cap: limit buffer size
           if (state.updateBuffer.length >= Level2Channel.MAX_BUFFER_SIZE) {
-            const removed = state.updateBuffer.shift();
+            state.updateBuffer.shift();
           }
           state.updateBuffer.push({ productId, update: parsedMessage });
         }

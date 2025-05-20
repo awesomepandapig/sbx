@@ -4,7 +4,8 @@ import { Button } from "~/components/ui/button"; // Assuming path is correct
 import { API_URL } from "~/lib/config"; // Assuming path is correct
 
 // Basic styling for the input-like div (Tailwind assumed)
-const inputStyleBase = "p-3 border border-gray-700 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap break-words w-full";
+const inputStyleBase =
+  "p-3 border border-gray-700 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap break-words w-full";
 const inputStyleEmpty = `${inputStyleBase} text-muted-foreground`; // Style for empty state
 const inputStyleFilled = `${inputStyleBase} text-gray-400`; // Style for stars or key
 
@@ -33,16 +34,20 @@ export default function SettingsApiContent() {
         body: JSON.stringify({ keyId: keyIdToDelete }), // Ensure body matches API expectation
       });
       if (!response.ok) {
-         const errorText = await response.text(); // Try to get more error info
-         console.error("Delete Key Response Error:", response.status, errorText);
-         throw new Error(`Failed to delete API key (Status: ${response.status}). ${errorText || ""}`);
+        const errorText = await response.text(); // Try to get more error info
+        console.error("Delete Key Response Error:", response.status, errorText);
+        throw new Error(
+          `Failed to delete API key (Status: ${response.status}). ${errorText || ""}`,
+        );
       }
       console.log(`Successfully deleted key ID: ${keyIdToDelete}`);
       setApiKeyId(null); // Clear the ID state after successful deletion
       return true; // Indicate success
     } catch (err: any) {
       console.error("Error deleting key:", err);
-      setError(err.message || "An unexpected error occurred during key deletion.");
+      setError(
+        err.message || "An unexpected error occurred during key deletion.",
+      );
       // Do not clear state here, let the calling function decide based on context
       return false; // Indicate failure
     }
@@ -50,46 +55,51 @@ export default function SettingsApiContent() {
 
   // CREATE Key Function (adapted from your code)
   async function createKey(): Promise<boolean> {
-     setError(null); // Clear previous errors
-     try {
-       console.log("Attempting to create new key...");
-       const response = await fetch(`${API_URL}/auth/api-key/create`, {
-         method: "POST",
-         credentials: "include",
-         headers: {
-           "Content-Type": "application/json",
-         },
-         body: JSON.stringify({}), // Empty body as per your original function
-       });
+    setError(null); // Clear previous errors
+    try {
+      console.log("Attempting to create new key...");
+      const response = await fetch(`${API_URL}/auth/api-key/create`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}), // Empty body as per your original function
+      });
 
-       if (!response.ok) {
-         const errorText = await response.text();
-         console.error("Create Key Response Error:", response.status, errorText);
-         throw new Error(`Failed to create API key (Status: ${response.status}). ${errorText || ""}`);
-       }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Create Key Response Error:", response.status, errorText);
+        throw new Error(
+          `Failed to create API key (Status: ${response.status}). ${errorText || ""}`,
+        );
+      }
 
-       const data = await response.json();
+      const data = await response.json();
 
-       if (!data.id || !data.key) {
-         console.error("Create Key Response Missing Data:", data);
-         throw new Error("API response did not contain the expected key ID and key value.");
-       }
+      if (!data.id || !data.key) {
+        console.error("Create Key Response Missing Data:", data);
+        throw new Error(
+          "API response did not contain the expected key ID and key value.",
+        );
+      }
 
-       console.log(`Successfully created key ID: ${data.id}`);
-       setApiKeyId(data.id);       // Store the new key ID
-       setApiKeyDisplay(data.key); // Display the new key value
-       setIsNewlyGenerated(true);  // Mark it as newly generated
-       return true; // Indicate success
-
-     } catch (err: any) {
-       console.error("Error creating key:", err);
-       setError(err.message || "An unexpected error occurred during key creation.");
-       // If creation fails, reset display state appropriately
-       setApiKeyDisplay(""); // Show empty input on creation failure
-       setIsNewlyGenerated(false);
-       setApiKeyId(null); // Ensure ID is null if creation fails
-       return false; // Indicate failure
-     }
+      console.log(`Successfully created key ID: ${data.id}`);
+      setApiKeyId(data.id); // Store the new key ID
+      setApiKeyDisplay(data.key); // Display the new key value
+      setIsNewlyGenerated(true); // Mark it as newly generated
+      return true; // Indicate success
+    } catch (err: any) {
+      console.error("Error creating key:", err);
+      setError(
+        err.message || "An unexpected error occurred during key creation.",
+      );
+      // If creation fails, reset display state appropriately
+      setApiKeyDisplay(""); // Show empty input on creation failure
+      setIsNewlyGenerated(false);
+      setApiKeyId(null); // Ensure ID is null if creation fails
+      return false; // Indicate failure
+    }
   }
 
   // --- Effects ---
@@ -106,21 +116,27 @@ export default function SettingsApiContent() {
         });
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("List Keys Response Error:", response.status, errorText);
-          throw new Error(`Failed to fetch API key status (Status: ${response.status}). ${errorText || ""}`);
+          console.error(
+            "List Keys Response Error:",
+            response.status,
+            errorText,
+          );
+          throw new Error(
+            `Failed to fetch API key status (Status: ${response.status}). ${errorText || ""}`,
+          );
         }
         const data = await response.json();
 
         if (Array.isArray(data) && data.length > 0 && data[0].id) {
-           console.log(`Found existing key ID: ${data[0].id}`);
-           setApiKeyId(data[0].id);           // Store the existing key ID
-           setApiKeyDisplay("*".repeat(64)); // Show stars for existing key
-           setIsNewlyGenerated(false);       // It's not newly generated
+          console.log(`Found existing key ID: ${data[0].id}`);
+          setApiKeyId(data[0].id); // Store the existing key ID
+          setApiKeyDisplay("*".repeat(64)); // Show stars for existing key
+          setIsNewlyGenerated(false); // It's not newly generated
         } else {
-           console.log("No existing API key found.");
-           setApiKeyId(null);           // No key exists
-           setApiKeyDisplay("");        // Show empty input
-           setIsNewlyGenerated(false);
+          console.log("No existing API key found.");
+          setApiKeyId(null); // No key exists
+          setApiKeyDisplay(""); // Show empty input
+          setIsNewlyGenerated(false);
         }
       } catch (err: any) {
         console.error("Error fetching initial key status:", err);
@@ -152,21 +168,24 @@ export default function SettingsApiContent() {
       console.log("Existing key found. Attempting deletion first...");
       deleteSuccess = await deleteKey(apiKeyId);
     } else {
-       console.log("No existing key found. Proceeding to create...");
+      console.log("No existing key found. Proceeding to create...");
     }
 
     // Step 2: Create a new key ONLY if deletion was successful (or not needed)
     if (deleteSuccess) {
-      console.log("Deletion successful (or not needed). Attempting creation...");
+      console.log(
+        "Deletion successful (or not needed). Attempting creation...",
+      );
       await createKey(); // createKey handles setting state on success/failure
     } else {
       console.log("Deletion failed. Aborting key creation.");
       // Error state should already be set by deleteKey failure
       // Revert display to stars if deletion failed but a key *did* exist initially
-      if (apiKeyId) { // Check if there *was* an ID before deletion attempt failed
-         setApiKeyDisplay("*".repeat(64));
+      if (apiKeyId) {
+        // Check if there *was* an ID before deletion attempt failed
+        setApiKeyDisplay("*".repeat(64));
       } else {
-         setApiKeyDisplay(""); // Should not happen if apiKeyId was null, but for safety
+        setApiKeyDisplay(""); // Should not happen if apiKeyId was null, but for safety
       }
       setIsNewlyGenerated(false);
     }
@@ -177,7 +196,8 @@ export default function SettingsApiContent() {
   // Copy Handler
   const handleCopy = async () => {
     // Only copy if it's the newly generated key visible
-    if (!isNewlyGenerated || !apiKeyDisplay || apiKeyDisplay === "*".repeat(64)) return;
+    if (!isNewlyGenerated || !apiKeyDisplay || apiKeyDisplay === "*".repeat(64))
+      return;
 
     try {
       await navigator.clipboard.writeText(apiKeyDisplay);
@@ -199,17 +219,21 @@ export default function SettingsApiContent() {
   let currentInputStyle = inputStyleFilled;
   let displayValue = apiKeyDisplay;
 
-  if (isLoading && !apiKeyId && !isNewlyGenerated) { // Initial load state
-      currentInputStyle = inputStyleEmpty;
-  } else if (!isLoading && !apiKeyId && !isNewlyGenerated && !error) { // No key exists state
-     displayValue = ""; // Render nothing inside, placeholder handled by CSS potentially
-     currentInputStyle = inputStyleEmpty; // Use empty style (might affect background/text color)
-  } else if (isNewlyGenerated) { // New key state
-      // displayValue is already set to the new key
-      currentInputStyle = inputStyleFilled; // Style for content
-  } else if (apiKeyId && !isNewlyGenerated) { // Existing key state (stars)
-      displayValue = "*".repeat(64);
-      currentInputStyle = inputStyleFilled;
+  if (isLoading && !apiKeyId && !isNewlyGenerated) {
+    // Initial load state
+    currentInputStyle = inputStyleEmpty;
+  } else if (!isLoading && !apiKeyId && !isNewlyGenerated && !error) {
+    // No key exists state
+    displayValue = ""; // Render nothing inside, placeholder handled by CSS potentially
+    currentInputStyle = inputStyleEmpty; // Use empty style (might affect background/text color)
+  } else if (isNewlyGenerated) {
+    // New key state
+    // displayValue is already set to the new key
+    currentInputStyle = inputStyleFilled; // Style for content
+  } else if (apiKeyId && !isNewlyGenerated) {
+    // Existing key state (stars)
+    displayValue = "*".repeat(64);
+    currentInputStyle = inputStyleFilled;
   }
   // Note: Error state doesn't directly change input display here, uses separate message
 
@@ -217,20 +241,26 @@ export default function SettingsApiContent() {
     <div>
       <h3 className="text-lg font-medium mb-4">API Key</h3>
       <p className="text-sm text-muted-foreground mb-6">
-        Manage your API key for external integrations. Generating a new key will invalidate the current one.
+        Manage your API key for external integrations. Generating a new key will
+        invalidate the current one.
       </p>
       <div className="space-y-4">
         {/* Key Display Area */}
-        <div className="relative group w-full"> {/* Ensure parent takes width */}
+        <div className="relative group w-full">
+          {" "}
+          {/* Ensure parent takes width */}
           <div
             className={`${currentInputStyle} pr-10`} // Apply dynamic style, ensure padding for button
             aria-live="polite" // Announce changes for screen readers
           >
-             {/* Render placeholder text via CSS ::before or keep div empty */}
-             {displayValue || <span className="text-muted-foreground italic">No API Key generated</span>}
-             {/* The above line adds placeholder text if displayValue is empty */}
+            {/* Render placeholder text via CSS ::before or keep div empty */}
+            {displayValue || (
+              <span className="text-muted-foreground italic">
+                No API Key generated
+              </span>
+            )}
+            {/* The above line adds placeholder text if displayValue is empty */}
           </div>
-
           {/* Copy Button - Show only when a new key is visible */}
           {isNewlyGenerated && !isLoading && (
             <button
@@ -240,7 +270,11 @@ export default function SettingsApiContent() {
               title={copied ? "Copied!" : "Copy API Key"}
               disabled={isLoading}
             >
-              {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+              {copied ? (
+                <Check size={18} className="text-green-500" />
+              ) : (
+                <Copy size={18} />
+              )}
             </button>
           )}
         </div>
@@ -253,7 +287,7 @@ export default function SettingsApiContent() {
         {/* Informational Messages */}
         {error && (
           <p className="text-xs text-red-500 flex items-center gap-1">
-             <AlertCircle size={14} /> Error: {error}
+            <AlertCircle size={14} /> Error: {error}
           </p>
         )}
         {copied && (

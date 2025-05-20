@@ -1,30 +1,30 @@
 use super::models::order::Order;
 use priority_queue::PriorityQueue;
 use redis::streams::StreamReadReply;
-use redis::{from_redis_value, Client, Commands, Connection, RedisResult};
+use redis::{Client, Commands, Connection, RedisResult, from_redis_value};
 use slab::Slab;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 
-const STREAM_KEY_PREFIX: &'static str = "instrument";
-const ORDER_STREAM_SUFFIX: &'static str = "orders";
-const EVENT_STREAM_SUFFIX: &'static str = "events";
+const STREAM_KEY_PREFIX: &str = "instrument";
+const ORDER_STREAM_SUFFIX: &str = "orders";
+const EVENT_STREAM_SUFFIX: &str = "events";
 
-const CONSUMER_GROUP_NAME: &'static str = "matching-engine-service";
-const CONSUMER_NAME: &'static str = "alice"; // TODO: REPLACE WITH POD_NAME
+const CONSUMER_GROUP_NAME: &str = "matching-engine-service";
+const CONSUMER_NAME: &str = "alice"; // TODO: REPLACE WITH POD_NAME
 
-const ORDER_SIDE_BUY: &'static str = "buy";
-const ORDER_SIDE_SELL: &'static str = "sell";
+const ORDER_SIDE_BUY: &str = "buy";
+const ORDER_SIDE_SELL: &str = "sell";
 
-const ORDER_ACTION_CREATE: &'static str = "create";
-const ORDER_ACTION_CANCEL: &'static str = "cancel";
+const ORDER_ACTION_CREATE: &str = "create";
+const ORDER_ACTION_CANCEL: &str = "cancel";
 
-const ORDER_TYPE_LIMIT: &'static str = "limit";
-const ORDER_TYPE_MARKET: &'static str = "market";
+const ORDER_TYPE_LIMIT: &str = "limit";
+// const ORDER_TYPE_MARKET: &str = "market";
 
-const ORDER_STATUS_DONE: &'static str = "done";
-const ORDER_STATUS_CANCELLED: &'static str = "cancelled";
+const ORDER_STATUS_DONE: &str = "done";
+// const ORDER_STATUS_CANCELLED: &str = "cancelled";
 
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
 const REDIS_READ_COUNT: usize = 1000;
@@ -96,8 +96,8 @@ pub struct MatchingEngine {
 
 impl MatchingEngine {
     pub fn new(
-        product_id: &str,
-        redis_url: &str,
+        product_id: String,
+        redis_url: String,
     ) -> Result<Self, Box<dyn Error>> {
         let client: Client = Client::open(redis_url)?;
         let redis_connection: Connection = client.get_connection()?;
@@ -111,7 +111,7 @@ impl MatchingEngine {
             STREAM_KEY_PREFIX, EVENT_STREAM_SUFFIX, product_id
         );
 
-        return Ok(Self {
+        Ok(Self {
             redis_connection,
             bid_pq: PriorityQueue::new(),
             ask_pq: PriorityQueue::new(),
@@ -120,14 +120,14 @@ impl MatchingEngine {
             order_stream,
             event_stream,
             sequence_num: 0,
-        });
+        })
     }
 
     #[inline]
     fn get_next_sequence_num(&mut self) -> u64 {
         let sequence_num = self.sequence_num;
         self.sequence_num = self.sequence_num.wrapping_add(1);
-        return sequence_num;
+        sequence_num
     }
 
     /// Reads new orders from the Redis stream using XREADGROUP.
@@ -202,7 +202,7 @@ impl MatchingEngine {
                 }
             }
         }
-        return (order_entries, message_ids);
+        (order_entries, message_ids)
     }
 
     /// Adds a limit order to the appropriate priority queue and the order map.
@@ -233,18 +233,16 @@ impl MatchingEngine {
     }
 
     /// Attempts to match orders at the top of the book.
-    fn match_orders(&mut self) -> Vec<Order> {
-        let mut matches: Vec<Order> = Vec::new();
-
+    fn match_orders(&mut self, output: &mut Vec<Order>) {
         while let (Some((&bid_index, _)), Some((&ask_index, _))) =
             (self.bid_pq.peek(), self.ask_pq.peek())
         {
             // Get the orders from the pool
-            let bid_order: &Order = &self
+            let bid_order: &Order = self
                 .order_pool
                 .get(bid_index)
                 .expect("Order should exist in pool");
-            let ask_order: &Order = &self
+            let ask_order: &Order = self
                 .order_pool
                 .get(ask_index)
                 .expect("Order should exist in pool");
@@ -298,28 +296,29 @@ impl MatchingEngine {
             );
 
             // Store *copies* of the matched orders for emitting
-            matches.push(bid);
-            matches.push(ask);
+            output.push(bid);
+            output.push(ask);
         }
-        return matches;
     }
 
     /// Emits matched orders to the match stream.
     fn emit_matches(&mut self, matched_orders: &Vec<Order>) {
+        let mut emit_buf: Vec<(&str, String)> = Vec::with_capacity(10);
+
+        let mut pipe = redis::pipe();
         for order in matched_orders {
-            let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
-            redis_tuples.push(("action", "match".to_string()));
+            emit_buf.clear();
+            emit_buf.extend(order.to_redis_tuples());
+            emit_buf.push(("action", "match".to_string()));
 
-            let result: RedisResult<String> = self.redis_connection.xadd(
-                &self.event_stream, // Target stream name
-                "*",                // Auto-generate message ID
-                &redis_tuples,      // Key-value pairs
-            );
+            pipe.cmd("XADD")
+                .arg(&self.event_stream)
+                .arg("*")
+                .arg(&emit_buf);
+        }
 
-            if let Err(e) = result {
-                eprintln!("Error emitting match for order {}: {}", order.id, e);
-                // TODO: Error handling - retry? Log?
-            }
+        if let Err(e) = pipe.query::<()>(&mut self.redis_connection) {
+            eprintln!("Error emitting match batch: {}", e);
         }
     }
 
@@ -366,7 +365,9 @@ impl MatchingEngine {
             ("action", "cancel_reject".to_string()),
             ("id", order_id.to_string()),
         ];
-        let _result: RedisResult<String> = self.redis_connection.xadd(&self.event_stream, "*", &redis_tuples);
+        let _result: RedisResult<String> =
+            self.redis_connection
+                .xadd(&self.event_stream, "*", &redis_tuples);
     }
 
     fn cancel_immediate(&mut self, order_id: &str) {
@@ -378,14 +379,13 @@ impl MatchingEngine {
             }
         };
 
-        let order: &Order =
-            match self.order_pool.get(order_index) {
-                Some(order) => order,
-                None => {
-                    self.emit_cancel_reject(order_id);
-                    return;
-                }
-            };
+        let order: &Order = match self.order_pool.get(order_index) {
+            Some(order) => order,
+            None => {
+                self.emit_cancel_reject(order_id);
+                return;
+            }
+        };
 
         let removed_from_pq = match order.side.as_str() {
             ORDER_SIDE_BUY => self.bid_pq.remove(&order_index).is_some(),
@@ -401,11 +401,9 @@ impl MatchingEngine {
         let mut redis_tuples: Vec<(&str, String)> = order.to_redis_tuples();
         redis_tuples.push(("action", "cancel".to_string()));
 
-        let _result: RedisResult<String> = self.redis_connection.xadd(
-            &self.event_stream,
-            "*",
-            &redis_tuples,
-        );
+        let _result: RedisResult<String> =
+            self.redis_connection
+                .xadd(&self.event_stream, "*", &redis_tuples);
     }
 
     #[allow(dead_code)] // Keep function signature
@@ -448,10 +446,10 @@ impl MatchingEngine {
                 self.process_order(order_index);
             }
 
-            matches = self.match_orders();
+            matches.clear();
+            self.match_orders(&mut matches);
             if !matches.is_empty() {
                 self.emit_matches(&matches);
-                matches.clear();
             }
 
             self.acknowledge_messages(&handled_message_ids);

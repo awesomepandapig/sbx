@@ -55,7 +55,6 @@ export default function SettingsDialog() {
         <DialogTitle className="text font-semibold">Settings</DialogTitle>
       </DialogHeader>
       <div className="flex h-[500px] max-w-[680px]">
-        
         {/* Sidebar */}
         <nav className="w-[180px] border-r border-gray-800 p-4 flex flex-col h-full">
           {/* Sidebar buttons remain the same, controlling the activeView state via hash */}
@@ -64,7 +63,7 @@ export default function SettingsDialog() {
             className="w-full justify-start"
             onClick={() => handleNavClick("account")}
           >
-            <User2/>
+            <User2 />
             Account
           </Button>
           <Button
@@ -72,7 +71,7 @@ export default function SettingsDialog() {
             className="w-full justify-start"
             onClick={() => handleNavClick("api")}
           >
-            <KeyRoundIcon/>
+            <KeyRoundIcon />
             API
           </Button>
           {/* Add more settings links here */}

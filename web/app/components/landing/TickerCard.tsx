@@ -57,7 +57,7 @@ export default function TickerCard({
           type: "subscribe",
           product_ids: [symbol],
           channel: "ticker_batch",
-        })
+        }),
       );
     };
 
@@ -83,7 +83,9 @@ export default function TickerCard({
   }, [symbol]);
 
   const price = tickerData ? parseFloat(tickerData.price) : null;
-  const change = tickerData ? parseFloat(tickerData.price_percent_chg_24_h) : null;
+  const change = tickerData
+    ? parseFloat(tickerData.price_percent_chg_24_h)
+    : null;
   const isPositiveChange = change !== null && change >= 0;
   const changeStyle = isPositiveChange
     ? "bg-green-500/20 text-green-400"
@@ -92,7 +94,7 @@ export default function TickerCard({
   return (
     <a href={`${DOMAIN}/trade/${symbol}`}>
       <div
-        className={`min-w-[200px] rounded-lg border border-zinc-800 bg-zinc-900/80 backdrop-blur-sm hover:border-zinc-700 transition-all duration-300`}
+        className={`min-w-[200px] rounded-lg bg-black/50 backdrop-blur-sm hover:border-zinc-700 transition-all duration-300`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{ boxShadow: isHovered ? `0 0 25px ${color}` : "none" }}
@@ -114,7 +116,6 @@ export default function TickerCard({
                 {symbol}
               </span>
             </div>
-            <div className="text-xs text-zinc-500">{type}</div>
           </div>
         </div>
         <div className="p-3">

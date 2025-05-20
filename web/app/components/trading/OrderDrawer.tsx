@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { API_URL } from "~/lib/config";
 import { WS_URL } from "~/lib/config";
 
@@ -25,17 +25,37 @@ async function getToken() {
 
 async function cancelOrder(orderId: string, productId: string) {
   try {
-    const response = await fetch(`${API_URL}/orders/${orderId}?product_id=${productId}`, {
-      method: "DELETE",
-      credentials: "include",
-    })
-    if(!response.ok) {
+    const response = await fetch(
+      `${API_URL}/orders/${orderId}?product_id=${productId}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
+    if (!response.ok) {
       throw new Error("Unable to cancel order");
     }
   } catch (error) {
     // TODO: Handle error
     console.error(error);
   }
+}
+
+function formatTime(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatPrice(price: string | null): string {
+  if (price === null) return "Market";
+  const p = parseFloat(price);
+  const formatted = p < 100 ? p.toFixed(2) : p.toFixed(0);
+  return Number(formatted).toLocaleString();
 }
 
 interface OrderDrawerProps {
@@ -65,21 +85,18 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
 
       if (!data || data.channel !== "user") return;
 
-      
-
       const events = data.events;
       if (!events) return;
 
-      for(const evt of events) {
-        if(evt.type == 'snapshot') {
+      for (const evt of events) {
+        if (evt.type == "snapshot") {
           const temp = [];
           for (const update of evt.updates) {
             temp.push(update);
           }
-          console.log(temp);
           setOrders(temp);
         }
-        if(evt.type == 'update') {
+        if (evt.type == "update") {
           // TODO:
         }
       }
@@ -114,12 +131,13 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
         </div>
         <div className="flex items-center">
           <button
-            className={`flex items-center text-gray-400 bg-[#1E1E1E] border border-[#2a2a2a] rounded px-2 py-1 ${
+            className={`flex items-center justify-between text-gray-400 bg-[#1E1E1E] border border-[#2a2a2a] rounded px-2 py-1 ${
               !authenticated ? "opacity-50" : ""
             }`}
             disabled={!authenticated}
           >
-            ALL MARKETS
+            <span>ALL MARKETS</span>
+            <ChevronDown size={16} className="ml-2" />
           </button>
           <button
             className={`flex items-center text-gray-400 bg-[#1E1E1E] border border-[#2a2a2a] rounded px-2 py-1 ml-2 ${
@@ -127,7 +145,8 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
             }`}
             disabled={!authenticated}
           >
-            ALL STATUSES
+            <span>ALL STATUSES</span>
+            <ChevronDown size={16} className="ml-2" />
           </button>
 
           {/* TODO: Add live data to status indicator */}
@@ -177,9 +196,9 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
           <p className="text-gray-400 mt-4">No orders found</p>
         ) : (
           <div className="overflow-x-auto mt-4 max-h-[calc(80vh-60px)] overflow-y-auto">
-            <table className="w-full border-collapse border border-[#2a2a2a] text-white text-sm">
-              <thead className="bg-[#1E1E1E] sticky top-0 z-10">
-                <tr className="bg-[#1E1E1E] text-gray-400">
+            <table className="w-full border-collapse text-white text-sm">
+              <thead className="bg-[#121212] sticky top-0 z-10">
+                <tr className="text-gray-400 border-b border-[#2a2a2a]">
                   {[
                     "Product",
                     "Side",
@@ -191,11 +210,11 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
                     "Size",
                     "Price",
                     "Cancel After",
-                    "CANCEL_BUTTON"
+                    "",
                   ].map((header) => (
                     <th
                       key={header}
-                      className="border border-[#2a2a2a] px-2 py-1 text-left"
+                      className="px-3 py-2 text-left font-medium"
                     >
                       {header}
                     </th>
@@ -204,27 +223,92 @@ export default function OrderDrawer({ authenticated }: OrderDrawerProps) {
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border border-[#2a2a2a]">
-                    <td className="px-2 py-1">{order.product_id}</td>
-                    <td className="px-2 py-1">{order.side}</td>
-                    <td className="px-2 py-1">{order.type}</td>
-                    <td className="px-2 py-1">{order.created_at ?? "N/A"}</td>
-                    <td className="px-2 py-1">{order.executed_value}</td>
-                    <td className="px-2 py-1">{order.status}</td>
-                    <td className="px-2 py-1">
+                  <tr
+                    key={order.id}
+                    className="border-b border-[#2a2a2a] hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`font-medium px-3 py-1 rounded text-center inline-block min-w-[60px] ${
+                          order.product_id === "JSP"
+                            ? "bg-[#1E1E1E]"
+                            : order.product_id === "BTC"
+                              ? "bg-[#332200] text-yellow-500"
+                              : order.product_id === "ETH"
+                                ? "bg-[#1a2b47] text-blue-400"
+                                : "bg-[#2a1a30] text-purple-400"
+                        }`}
+                      >
+                        {order.product_id}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`font-medium ${order.side === "buy" ? "text-green-500" : "text-red-500"}`}
+                      >
+                        {order.side}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`${order.type === "market" ? "text-yellow-500" : "text-gray-300"}`}
+                      >
+                        {order.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-400">
+                      {formatTime(order.created_at)}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {order.executed_value > 0 ? (
+                        <span className="text-green-400">
+                          ${order.executed_value.toLocaleString()}
+                        </span>
+                      ) : (
+                        "0"
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded ${
+                          order.status === "open"
+                            ? "bg-blue-900/30 text-blue-400"
+                            : order.status === "filled"
+                              ? "bg-green-900/30 text-green-400"
+                              : order.status === "canceled"
+                                ? "bg-red-900/30 text-red-400"
+                                : "bg-gray-800 text-gray-400"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-400">
                       {order.settled ? "Yes" : "No"}
                     </td>
-                    <td className="px-2 py-1">{order.size}</td>
-                    <td className="px-2 py-1">{order.price ?? "N/A"}</td>
-                    <td className="px-2 py-1">{order.cancel_after}</td>
-                    
-                    <td className="px-2 py-1">
-                      <button className={`flex items-center text-red-400 bg-[#1E1E1E] border border-red-600 rounded p-1 text-xs`}
-                      onClick={()=> cancelOrder(order.id, order.product_id)}>
-                        CANCEL
-                      </button>
+                    <td className="px-3 py-2.5 font-medium">{order.size}</td>
+                    <td className="px-3 py-2.5 font-medium">
+                      {formatPrice(order.price)}
                     </td>
-
+                    <td className="px-3 py-2.5 text-gray-400">
+                      {order.cancel_after}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {order.status === "open" ? (
+                        <button
+                          className="flex items-center text-red-400 bg-red-900/20 border border-red-900/50 rounded px-3 py-1 text-xs font-medium hover:bg-red-900/30 transition-colors"
+                          onClick={() =>
+                            cancelOrder(order.id, order.product_id)
+                          }
+                        >
+                          CANCEL
+                        </button>
+                      ) : (
+                        <span className="text-gray-600 px-3 py-1 text-xs">
+                          —
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -17,19 +17,19 @@ export interface Order {
 }
 
 export function parseOrder(fields: Record<string, string>): Order {
-    return {
-      id: fields.id as UUID,
-      product_id: fields.product_id,
-      user_id: fields.user_id,
-      side: fields.side as 'buy' | 'sell',
-      type: fields.type as 'market' | 'limit',
-      created_at: fields.created_at,
-      executed_value: fields.executed_value,
-      status: fields.status as 'open' | 'done' | 'cancelled',
-      settled: fields.settled === 'true',
-      price: fields.price ? fields.price : undefined,
-      cancel_after: fields.cancel_after as 'min' | 'hour' | undefined,
-      size: fields.size,
-      action: fields.action as 'create' | 'cancel',
-    };
-}  
+  return {
+    id: fields.id as UUID,
+    product_id: fields.product_id,
+    user_id: fields.user_id,
+    side: fields.side as 'buy' | 'sell',
+    type: fields.type as 'market' | 'limit',
+    created_at: fields.created_at,
+    executed_value: fields.executed_value,
+    status: fields.status as 'open' | 'done' | 'cancelled',
+    settled: fields.settled === 'true',
+    price: fields.price ? fields.price : undefined,
+    cancel_after: fields.cancel_after as 'min' | 'hour' | undefined,
+    size: fields.size,
+    action: fields.action as 'create' | 'cancel',
+  };
+}

@@ -1,12 +1,12 @@
 use super::order::Order;
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 #[derive(Debug)]
 pub struct OrderBook {
     pub bids: BTreeMap<i64, i64>,
     pub asks: BTreeMap<i64, i64>,
-    pub sequence_num: String
+    pub sequence_num: String,
 }
 
 impl OrderBook {

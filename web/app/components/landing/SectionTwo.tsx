@@ -1,31 +1,22 @@
 import Card, { CardImage } from "./Card";
 
 export default function SectionTwo() {
-  const sectionStyle = {
-    maxWidth: "75em",
-    width: "100%",
-    marginLeft: "auto",
-    marginRight: "auto",
-  };
-
   return (
-    <div className="mt-24">
+    <div className="md:mt-12">
       {/* Heading Section */}
       <div className="w-full flex justify-center">
-        <h1 className="text-center m-auto w-fit font-semibold mb-4 text-[44px] bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
+        <h1 className="text-center m-auto w-full font-semibold md:p-8 p-4 md:text-[44px] text-3xl bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
           Built for developers
         </h1>
       </div>
 
       {/* Main Content Section */}
-      <div
-        className="flex flex-row gap-8 p-8 justify-center"
-        style={sectionStyle}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
         <Card
           title="Open source"
           description="All code is MIT licensed, free for you to use as you please!"
-          width="w-96" // Can adjust width as needed
+          width="w-full" // Can adjust width as needed
           aspectRatio="aspect-square" // Aspect ratio control
           textPosition="center"
         >
@@ -44,28 +35,17 @@ export default function SectionTwo() {
         <Card
           title="Trade structures"
           description="Trade Fairy & Jasper mineshafts, Dragon's Lairs, and more."
-          width="w-7/12" // Can adjust width as needed
+          width="md:col-span-2" // Can adjust width as needed
           aspectRatio="" // Aspect ratio control
           textPosition="left"
         >
           <p></p>
         </Card>
-      </div>
-
-      {/* Second Main Content Section */}
-      <div
-        className="flex flex-row gap-8 pl-8 pr-8 pb-8 justify-center"
-        style={{
-          maxWidth: "75em", // Restrict the max-width to 75em
-          width: "100%", // Allow it to take the full available width up to the max-width
-          marginLeft: "auto", // Center the div horizontally
-          marginRight: "auto", // Center the div horizontally
-        }}
-      >
+      
         <Card
           title="Lightning fast"
-          description="Rust + Redis powered matching engine powers instant trade executions."
-          width="w-7/12" // Can adjust width as needed
+          description="Aeron® powered matching engine enables instant trade executions."
+          width="w-full" // Can adjust width as needed
           aspectRatio="" // Aspect ratio control
           textPosition="center"
         >
@@ -74,7 +54,7 @@ export default function SectionTwo() {
 
         <Card
           title="A foundation to build upon"
-          description="Create your own client mods with our REST API & WebSocket feeds."
+          description="Create your own client mods with our FIX, REST, & WebSocket APIs."
           width="w-96" // Can adjust width as needed
           aspectRatio="aspect-square" // Aspect ratio control
           textPosition="left"
@@ -90,13 +70,13 @@ export default function SectionTwo() {
             aria-hidden="true"
           >
             <code className="text-xs">
-              &#123; time:'2025-03-21', value:91.72 &#125;, &#123;
-              time:'2025-03-21', value:18.23 &#125;, &#123; time:'2025-03-21',
-              value:63.20 &#125;, &#123; time:'2025-03-21', value:70.56 &#125;,
-              &#123; time:'2025-03-21', value:95.29 &#125;, &#123;
-              time:'2025-03-21', value:35.85 &#125;, &#123; time:'2025-03-21',
-              value:31.65 &#125;, &#123; time:'2025-03-21', value:24.91 &#125;,
-              &#123;
+              &123;
+              "product_id": "JSP",
+              "side": "buy",
+              "type": "limit",
+              "size": 1,
+              "price": 90
+              &125;
             </code>
           </p>
         </Card>

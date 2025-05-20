@@ -35,7 +35,7 @@ export default function Card({
 }: CardProps) {
   return (
     <div
-      className={`${width} h-96 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] rounded-xl p-8 flex flex-col`}
+      className={`${width} h-96 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] rounded-[20px] p-8 flex flex-col`}
     >
       <div className="flex-grow flex items-center justify-center text-gray-500">
         {children}

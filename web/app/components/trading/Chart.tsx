@@ -138,9 +138,9 @@ export default function Chart({ symbol }: ChartProps) {
 
         // --- MOCK DATA (Replace with actual fetch) ---
         // Using the demo's generator logic *conceptually* for mock initial data
-        // const mockInitial = generateInitialMockData(200); // Generate ~200 historical candles
-        // console.log(`Setting ${mockInitial.length} initial candles.`);
-        // candlestickSeriesRef.current?.setData(mockInitial);
+        const mockInitial = generateInitialMockData(200); // Generate ~200 historical candles
+        console.log(`Setting ${mockInitial.length} initial candles.`);
+        candlestickSeriesRef.current?.setData(mockInitial);
         // --- END MOCK DATA ---
 
         // Optional: Adjust the view after setting data

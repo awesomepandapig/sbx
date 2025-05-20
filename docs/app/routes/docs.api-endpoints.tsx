@@ -88,14 +88,11 @@ export default function Page() {
                   <CodeHighlight code="/orders" />
                 </td>
               </tr>
-
             </tbody>
           </table>
         </div>
 
-        <CreateOrder/>
-        
-
+        <CreateOrder />
       </main>
     </>
   );

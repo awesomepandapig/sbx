@@ -3,8 +3,6 @@ use super::order_book::OrderBook;
 use chrono::{Datelike, Duration, TimeZone, Utc};
 use redis::{Commands, Connection, RedisResult};
 use serde::Serialize;
-use serde_json;
-// use std::time::{Duration as StdDuration, Instant}; // For batch timing
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Ticker {
@@ -52,7 +50,7 @@ impl TickerState {
             .unwrap()
             .timestamp();
 
-        return Self {
+        Self {
             product_id,
             start_24_hr_ts,
             start_52_w_ts,
@@ -63,52 +61,29 @@ impl TickerState {
             low_52_w: i64::MAX,
             high_52_w: i64::MIN,
             last_price: 0,
-        };
-    }
-
-    fn reset_24_h_values(&mut self) {
-        let current_day_start_dt = Utc.timestamp_opt(self.start_24_hr_ts, 0).unwrap();
-        let next_day_start_dt = current_day_start_dt + Duration::days(1);
-        self.start_24_hr_ts = next_day_start_dt.timestamp();
-        self.volume_24_h = 0;
-        self.low_24_h = i64::MAX;
-        self.high_24_h = i64::MIN;
-        self.open_24_hr = self.last_price; // Carry over last price as new open
-    }
-
-    fn reset_52_w_values(&mut self) {
-        let current_year_start_dt = Utc.timestamp_opt(self.start_52_w_ts, 0).unwrap();
-        let next_year_start_dt = Utc
-            .with_ymd_and_hms(current_year_start_dt.year() + 1, 1, 1, 0, 0, 0)
-            .unwrap();
-        self.start_52_w_ts = next_year_start_dt.timestamp();
-        self.low_52_w = i64::MAX;
-        self.high_52_w = i64::MIN;
+        }
     }
 
     fn check_and_reset_windows(&mut self, current_ts: i64) {
-        let next_day_start_ts = Utc
-            .timestamp_opt(self.start_24_hr_ts, 0)
-            .unwrap()
-            .timestamp()
-            + Duration::days(1).num_seconds();
+        let mut next_day_start_ts = self.start_24_hr_ts + Duration::days(1).num_seconds();
         while current_ts >= next_day_start_ts {
-            self.reset_24_h_values();
+            self.start_24_hr_ts = next_day_start_ts;
+            self.volume_24_h = 0;
+            self.low_24_h = i64::MAX;
+            self.high_24_h = i64::MIN;
+            self.open_24_hr = self.last_price;
+            next_day_start_ts += Duration::days(1).num_seconds();
         }
 
-        let next_year_start_ts = Utc
-            .with_ymd_and_hms(
-                Utc.timestamp_opt(self.start_52_w_ts, 0).unwrap().year() + 1,
-                1,
-                1,
-                0,
-                0,
-                0,
-            )
-            .unwrap()
-            .timestamp();
+        let mut year = Utc.timestamp_opt(self.start_52_w_ts, 0).unwrap().year();
+        let mut next_year_start_ts = Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).unwrap().timestamp();
+
         while current_ts >= next_year_start_ts {
-            self.reset_52_w_values();
+            self.start_52_w_ts = next_year_start_ts;
+            self.low_52_w = i64::MAX;
+            self.high_52_w = i64::MIN;
+            year += 1;
+            next_year_start_ts = Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).unwrap().timestamp();
         }
     }
 
@@ -138,7 +113,7 @@ impl TickerState {
             return ((self.last_price as f64 - self.open_24_hr as f64) / self.open_24_hr as f64)
                 * 100.0;
         }
-        return 0.0;
+        0.0
     }
 
     fn create_ticker(&self, book: &OrderBook, timestamp: i64) -> Ticker {
@@ -173,7 +148,7 @@ impl TickerState {
             self.high_52_w
         };
 
-        return Ticker {
+        Ticker {
             product_id: self.product_id.clone(),
             price: self.last_price,
             volume_24_h: self.volume_24_h,
@@ -188,7 +163,7 @@ impl TickerState {
             best_ask,
             best_ask_quantity,
             timestamp,
-        };
+        }
     }
 }
 
@@ -202,11 +177,11 @@ impl TickerService {
     pub fn new(product_id: String) -> Self {
         let state = TickerState::new(product_id.clone());
         let batch_channel_name = format!("marketdata:ticker_batch:{}", product_id);
-        return Self {
+        Self {
             product_id,
             state,
             batch_channel_name,
-        };
+        }
     }
 
     // TODO: This error checking may be unnecessary
@@ -239,7 +214,6 @@ impl TickerService {
         }
     }
 
-    
     pub fn emit_batch(&mut self, conn: &mut Connection, book: &OrderBook) {
         let now = Utc::now().timestamp();
         self.state.check_and_reset_windows(now);
@@ -247,8 +221,7 @@ impl TickerService {
         let ticker = self.state.create_ticker(book, now);
         match serde_json::to_string(&vec![ticker]) {
             Ok(json_payload) => {
-                let result: RedisResult<i64> =
-                    conn.publish(&self.batch_channel_name, json_payload);
+                let result: RedisResult<i64> = conn.publish(&self.batch_channel_name, json_payload);
                 if let Err(e) = result {
                     eprintln!("Failed to publish ticker batch: {}", e);
                 }

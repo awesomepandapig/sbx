@@ -55,18 +55,18 @@ impl Order {
     }
 
     pub fn to_redis_tuples(&self) -> Vec<(&str, String)> {
-        let mut fields = Vec::new();
-
-        fields.push(("id", self.id.clone()));
-        fields.push(("product_id", self.product_id.clone()));
-        fields.push(("user_id", self.user_id.clone()));
-        fields.push(("side", self.side.clone()));
-        fields.push(("type", self.r#type.clone()));
-        fields.push(("created_at", self.created_at.to_string()));
-        fields.push(("status", self.status.clone()));
-        fields.push(("executed_value", self.executed_value.to_string()));
-        fields.push(("settled", self.settled.to_string()));
-        fields.push(("size", self.size.to_string()));
+        let mut fields = vec![
+            ("id", self.id.clone()),
+            ("product_id", self.product_id.clone()),
+            ("user_id", self.user_id.clone()),
+            ("side", self.side.clone()),
+            ("type", self.r#type.clone()),
+            ("created_at", self.created_at.to_string()),
+            ("status", self.status.clone()),
+            ("executed_value", self.executed_value.to_string()),
+            ("settled", self.settled.to_string()),
+            ("size", self.size.to_string()),
+        ];
 
         // Option fields
         if let Some(price) = self.price {
@@ -77,6 +77,6 @@ impl Order {
             fields.push(("cancel_after", cancel_after.clone()));
         }
 
-        return fields;
+        fields
     }
 }

@@ -4,7 +4,6 @@ mod ticker;
 // mod candle;
 mod utils;
 
-use order::Order;
 use order_book::OrderBook;
 use ticker::TickerService;
 // use candle::CandleService;
@@ -14,10 +13,9 @@ use std::env;
 use std::error::Error;
 use std::time::{Duration, Instant};
 
-use chrono::{Utc, SecondsFormat};
+use chrono::{SecondsFormat, Utc};
 use redis::{Client, Commands, Connection, RedisResult};
 use serde::Serialize;
-use serde_json;
 
 // pub fn startup() {
 //     // Read the entire stream until the last acknowledged message to rebuild the book
@@ -85,7 +83,8 @@ fn level2(
 fn main() -> Result<(), Box<dyn Error>> {
     // TODO: Handle REDIS_TLS configuration
     let redis_url: String = env::var("REDIS_URL").expect("REDIS_URL environment variable not set");
-    let product_id: String = env::var("PRODUCT_ID").expect("PRODUCT_ID environment variable not set");
+    let product_id: String =
+        env::var("PRODUCT_ID").expect("PRODUCT_ID environment variable not set");
 
     println!("Connecting to Redis at: {}", redis_url);
     let client: Client = Client::open(redis_url)?;
@@ -162,7 +161,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         price,
                         quantity_change,
                     );
-
                 }
                 "cancel_reject" => {}
                 _ => {

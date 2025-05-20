@@ -1,6 +1,6 @@
 use super::order::Order;
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 #[derive(Clone, Debug)]
 pub struct OrderBook {

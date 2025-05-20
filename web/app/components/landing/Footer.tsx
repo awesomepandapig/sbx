@@ -4,8 +4,8 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-neutral-800 bg-black text-neutral-400 py-16 text-sm">
-      <div className="max-w-7xl mx-auto px-6">
+    <footer className="border-t border-neutral-800 bg-black text-neutral-400 py-6 text-sm">
+      <div className="max-w-7xl px-6">
         {/* Main links section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-12">
           <div className="flex flex-col justify-between h-full">

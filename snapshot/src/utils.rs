@@ -1,9 +1,9 @@
 use super::order::Order;
 
-use redis::streams::StreamReadReply;
+use redis::AsyncCommands;
 use redis::RedisResult;
 use redis::aio::MultiplexedConnection;
-use redis::AsyncCommands;
+use redis::streams::StreamReadReply;
 
 const CONSUMER_GROUP_NAME: &str = "snapshot-service";
 const CONSUMER_NAME: &str = "alice"; // TODO: REPLACE WITH POD_NAME
@@ -11,7 +11,10 @@ const CONSUMER_NAME: &str = "alice"; // TODO: REPLACE WITH POD_NAME
 const REDIS_BLOCK_TIMEOUT_MS: usize = 5000;
 const REDIS_READ_COUNT: usize = 1000;
 
-pub async fn read_from_stream(conn: &mut MultiplexedConnection, product_id: String) -> Vec<(String, Order)> {
+pub async fn read_from_stream(
+    conn: &mut MultiplexedConnection,
+    product_id: String,
+) -> Vec<(String, Order)> {
     let stream_name = format!("instrument:events:{}", product_id);
 
     let result: RedisResult<StreamReadReply> = redis::cmd("XREADGROUP")
@@ -51,5 +54,7 @@ pub async fn read_from_stream(conn: &mut MultiplexedConnection, product_id: Stri
 }
 
 pub async fn acknowledge(conn: &mut MultiplexedConnection, stream_name: &str, message_id: &str) {
-    let _: RedisResult<i64> = conn.xack(stream_name, CONSUMER_GROUP_NAME, &[message_id]).await;
+    let _: RedisResult<i64> = conn
+        .xack(stream_name, CONSUMER_GROUP_NAME, &[message_id])
+        .await;
 }

@@ -131,7 +131,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     };
     res.status(201).json(orderResponse);
   } catch (error) {
-    if(error instanceof z.ZodError) {
+    if (error instanceof z.ZodError) {
       res.status(400).json({ message: ERR_BAD_REQUEST });
     } else {
       console.error(error);
@@ -145,8 +145,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const orderId = z.string().uuid().parse(req.params.id);
     const userId = res.locals.session.user.id;
-    
-    
+
     const result = await db.select().from(order).where(eq(order.id, orderId));
     const orderRecord = orderSelectSchema.parse(result[0]);
 
@@ -161,10 +160,12 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
     }
 
     // Convert UNIX timestamp to human readable format
-    orderRecord.created_at = new Date(parseInt(orderRecord.created_at)).toISOString();
+    orderRecord.created_at = new Date(
+      parseInt(orderRecord.created_at),
+    ).toISOString();
     res.status(200).json({ order: orderRecord });
   } catch (error) {
-    if(error instanceof z.ZodError) {
+    if (error instanceof z.ZodError) {
       res.status(400).json({ message: ERR_BAD_REQUEST });
     } else {
       console.error(error);
@@ -197,7 +198,7 @@ router.delete(
       }
 
       // If order is done or cancelled fail fast
-      if(orderRecord.status != 'open') {
+      if (orderRecord.status != 'open') {
         // TODO: Send cancel reject
         res.status(403).json({ message: ERR_FORBIDDEN });
         return;
@@ -211,13 +212,14 @@ router.delete(
       // TODO: AWAIT A RESPONSE ON THE OUTPUT STREAM
       res.status(204).send();
     } catch (error) {
-      if(error instanceof z.ZodError) {
+      if (error instanceof z.ZodError) {
         res.status(400).json({ message: ERR_BAD_REQUEST });
       } else {
         console.error(error);
         res.status(500).json({ message: ERR_INTERNAL_SERVER });
       }
     }
-});
+  },
+);
 
 export default router;

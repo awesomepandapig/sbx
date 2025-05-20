@@ -13,14 +13,14 @@ export default function AutoScrollingCarousel() {
       direction: "ltr",
       drag: false,
       focus: "center",
-      perPage: 5,
+      perPage: 3,
       autoScroll: {
         speed: 0.1,
         pauseOnHover: false,
       },
       pagination: false,
       arrows: false,
-      gap: "1rem", // Use a string value for gap
+      gap: "0.5rem", // Use a string value for gap
     });
 
     splide.mount({ AutoScroll });
