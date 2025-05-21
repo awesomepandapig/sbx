@@ -1,18 +1,19 @@
 import Card, { CardImage } from "./Card";
+import SVGCard from "./SVGCard";
+import { APICard } from "./APICard";
 
 export default function SectionTwo() {
   return (
     <div className="md:mt-12">
       {/* Heading Section */}
-      <div className="w-full flex justify-center">
-        <h1 className="text-center m-auto w-full font-semibold md:p-8 p-4 md:text-[44px] text-3xl bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
-          Built for developers
+      <div className="w-full flex justify-center p-4">
+        <h1 className="text-center m-auto w-full font-semibold md:p-8 md:text-[44px] text-3xl bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
+          Engineered for Extreme Throughput
         </h1>
       </div>
 
       {/* Main Content Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
         <Card
           title="Open source"
           description="All code is MIT licensed, free for you to use as you please!"
@@ -41,10 +42,10 @@ export default function SectionTwo() {
         >
           <p></p>
         </Card>
-      
+
         <Card
           title="Lightning fast"
-          description="Aeron® powered matching engine enables instant trade executions."
+          description="Aeron® powered matching engine enables sub-millisecond trade executions."
           width="w-full" // Can adjust width as needed
           aspectRatio="" // Aspect ratio control
           textPosition="center"
@@ -52,34 +53,8 @@ export default function SectionTwo() {
           <p>Replace with animation of orders incoming</p>
         </Card>
 
-        <Card
-          title="A foundation to build upon"
-          description="Create your own client mods with our FIX, REST, & WebSocket APIs."
-          width="w-96" // Can adjust width as needed
-          aspectRatio="aspect-square" // Aspect ratio control
-          textPosition="left"
-        >
-          <p
-            className="text-gray-500 text-center"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(107, 114, 128, 1), rgba(107, 114, 128, 0))",
-              WebkitBackgroundClip: "text",
-              color: "transparent",
-            }}
-            aria-hidden="true"
-          >
-            <code className="text-xs">
-              &123;
-              "product_id": "JSP",
-              "side": "buy",
-              "type": "limit",
-              "size": 1,
-              "price": 90
-              &125;
-            </code>
-          </p>
-        </Card>
+        <APICard/>
+
       </div>
     </div>
   );

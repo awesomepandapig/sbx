@@ -1,11 +1,11 @@
-import { ArrowUpRight} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import TickerTable from "./TickerTable";
 
 export default function Hero() {
   return (
     <div className="mt-4 grid grid-cols-1 md:grid-cols-5 md:grid-rows-1 gap-4">
       <div className="md:col-span-3 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] rounded-[20px] p-8 flex flex-col justify-between">
-        <h1 className="text-[#3CFFFF] text-[clamp(2rem,6vw,4.5rem)] font-bold leading-none mb-4">
+        <h1 className="text-[#3CFFFF] text-[clamp(2rem,6vw,6.5rem)] font-bold leading-none mb-4">
           EXCHANGE
           <br />
           SKYBLOCK
@@ -27,7 +27,7 @@ export default function Hero() {
         </div>
       </div>
 
-      <TickerTable/>
+      <TickerTable />
     </div>
   );
 }

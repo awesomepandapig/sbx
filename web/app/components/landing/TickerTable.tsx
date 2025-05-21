@@ -42,7 +42,7 @@ const initialData = [
   },
 ];
 
-type Ticker = typeof initialData[number];
+type Ticker = (typeof initialData)[number];
 
 export default function TickerTable() {
   const [dataMap, setDataMap] = useState(() => {
@@ -63,13 +63,13 @@ export default function TickerTable() {
           type: "subscribe",
           product_ids: productNames,
           channel: "ticker_batch",
-        })
+        }),
       );
     };
 
     ws.onmessage = (msg) => {
       const parsed = JSON.parse(msg.data);
-        console.log(parsed);
+      console.log(parsed);
 
       if (!parsed?.events) return;
 
@@ -89,8 +89,8 @@ export default function TickerTable() {
                 ticker.price_percent_chg_24_h > 0
                   ? "up"
                   : ticker.price_percent_chg_24_h < 0
-                  ? "down"
-                  : "neutral",
+                    ? "down"
+                    : "neutral",
             });
           }
         }
@@ -134,7 +134,7 @@ const TickerRow = React.memo(function TickerRow({
     <tr
       className={cn(
         "bg-[#0e0e0e] border-t border-[#1e1e1e] hover:bg-[#1e1e1e]",
-        index === 0 && "border-t-0"
+        index === 0 && "border-t-0",
       )}
     >
       {/* symbol column */}

@@ -2,6 +2,8 @@ import Card, { CardImage } from "./Card";
 import { Heart, Plus, User } from "lucide-react";
 import PartyInvite from "./PartyInvite";
 import AutoScrollingCarousel from "./Carousel";
+import { PriceGraph } from "./PriceGraph";
+import SVGCard from "./SVGCard";
 
 export default function SectionOne() {
   return (
@@ -84,14 +86,14 @@ export default function SectionOne() {
           />
         </Card>
 
-        <Card
+        <SVGCard
           title="Analyze the market"
           description="Access detailed historical trade data."
           width="md:col-span-2"
           textPosition="center"
         >
-          <p>replace with graph</p>
-        </Card>
+          <PriceGraph />
+        </SVGCard>
       </div>
     </div>
   );

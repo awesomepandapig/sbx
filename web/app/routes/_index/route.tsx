@@ -7,18 +7,14 @@ import Footer from "~/components/landing/Footer";
 export default function Home() {
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-7xl rounded-[30px] p-6">
-          <div className="bg-black rounded-[20px] overflow-hidden"></div>
-          <Navbar />
-          <main className="pt-8 pb-[65px]">
-            <Hero />
-            <SectionOne />
-            <SectionTwo />
-          </main>
-          <Footer />
-        </div>
-      </div>
+      <div className="bg-black rounded-[20px] overflow-hidden"></div>
+      <Navbar />
+      <main className="pt-20 mb-24 max-w-7xl m-auto items-center justify-center">
+        <Hero />
+        <SectionOne />
+        <SectionTwo />
+      </main>
+      <Footer />
     </>
   );
 }
