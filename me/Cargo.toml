@@ -1,9 +1,7 @@
-[package]
-name = "sbx-matching-engine"
-version = "0.1.0"
-edition = '2024'
-
-[dependencies]
-redis = { version = "0.29.1", features = [] }
-priority-queue = "2.3.0"
-slab = "0.4.9"
+[workspace]
+members = [ 
+    "aeron-pub",
+    "aeron-sub",
+    "matching-engine",
+    "sbe"
+]

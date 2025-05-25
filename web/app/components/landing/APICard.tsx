@@ -10,11 +10,74 @@ interface CardProps {
   textPosition?: "left" | "center" | "right";
 }
 
-export function APICard() {
-  const [activeTab, setActiveTab] = useState("curl")
+export default function APICard() {
+  const [activeTab, setActiveTab] = useState("python")
 
   // Define the code snippets for each language
   const snippets = {
+    python: {
+      code: [
+        { type: "keyword", content: "import" },
+        { type: "space", content: " " },
+        { type: "module", content: "requests" },
+        { type: "newline", content: "\n\n" },
+        { type: "module", content: "requests" },
+        { type: "operator", content: "." },
+        { type: "function", content: "post" },
+        { type: "bracket", content: "(" },
+        { type: "newline", content: "\n  " },
+        { type: "string", content: "'https://api.skyblock.exchange/v1/orders'" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n  " },
+        { type: "param", content: "headers" },
+        { type: "operator", content: "=" },
+        { type: "bracket", content: "{" },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'x-api-key'" },
+        { type: "operator", content: ": " },
+        { type: "string", content: "'YOUR_API_KEY'" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'Content-Type'" },
+        { type: "operator", content: ": " },
+        { type: "string", content: "'application/json'" },
+        { type: "newline", content: "\n  " },
+        { type: "bracket", content: "}" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n  " },
+        { type: "param", content: "json" },
+        { type: "operator", content: "=" },
+        { type: "bracket", content: "{" },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'product_id'" },
+        { type: "operator", content: ": " },
+        { type: "string", content: "'JSP'" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'side'" },
+        { type: "operator", content: ": " },
+        { type: "string", content: "'buy'" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'type'" },
+        { type: "operator", content: ": " },
+        { type: "string", content: "'limit'" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'size'" },
+        { type: "operator", content: ": " },
+        { type: "number", content: "1" },
+        { type: "operator", content: "," },
+        { type: "newline", content: "\n    " },
+        { type: "string", content: "'price'" },
+        { type: "operator", content: ": " },
+        { type: "number", content: "90" },
+        { type: "newline", content: "\n  " },
+        { type: "bracket", content: "}" },
+        { type: "newline", content: "\n" },
+        { type: "bracket", content: ")" },
+      ],
+    },
     curl: {
       code: [
         { type: "command", content: "curl" },
@@ -131,69 +194,6 @@ export function APICard() {
         { type: "bracket", content: "})" },
       ],
     },
-    python: {
-      code: [
-        { type: "keyword", content: "import" },
-        { type: "space", content: " " },
-        { type: "module", content: "requests" },
-        { type: "newline", content: "\n\n" },
-        { type: "module", content: "requests" },
-        { type: "operator", content: "." },
-        { type: "function", content: "post" },
-        { type: "bracket", content: "(" },
-        { type: "newline", content: "\n  " },
-        { type: "string", content: "'https://api.skyblock.exchange/v1/orders'" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n  " },
-        { type: "param", content: "headers" },
-        { type: "operator", content: "=" },
-        { type: "bracket", content: "{" },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'x-api-key'" },
-        { type: "operator", content: ": " },
-        { type: "string", content: "'YOUR_API_KEY'" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'Content-Type'" },
-        { type: "operator", content: ": " },
-        { type: "string", content: "'application/json'" },
-        { type: "newline", content: "\n  " },
-        { type: "bracket", content: "}" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n  " },
-        { type: "param", content: "json" },
-        { type: "operator", content: "=" },
-        { type: "bracket", content: "{" },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'product_id'" },
-        { type: "operator", content: ": " },
-        { type: "string", content: "'JSP'" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'side'" },
-        { type: "operator", content: ": " },
-        { type: "string", content: "'buy'" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'type'" },
-        { type: "operator", content: ": " },
-        { type: "string", content: "'limit'" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'size'" },
-        { type: "operator", content: ": " },
-        { type: "number", content: "1" },
-        { type: "operator", content: "," },
-        { type: "newline", content: "\n    " },
-        { type: "string", content: "'price'" },
-        { type: "operator", content: ": " },
-        { type: "number", content: "90" },
-        { type: "newline", content: "\n  " },
-        { type: "bracket", content: "}" },
-        { type: "newline", content: "\n" },
-        { type: "bracket", content: ")" },
-      ],
-    },
   }
 
   // Define color mapping for syntax highlighting
@@ -232,9 +232,9 @@ export function APICard() {
 
   return (
     <div
-      className={`md:col-span-2 h-96 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] flex flex-row rounded-[20px] overflow-hidden`}
+      className={`hidden md:col-span-2 h-96 bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] md:grid grid-cols-2 rounded-[20px] overflow-hidden`}
     >
-        <div className="h-full w 1/2 flex flex-col">
+        <div className="h-full">
         
         <div className={`text-left p-8`}>
           <h4 className="text-white font-medium text-xl mb-2">A foundation to build upon</h4>
@@ -242,16 +242,16 @@ export function APICard() {
         </div>
       </div>
 
-      <div className="w-1/2 h-full">
+      <div className="w-full h-full">
 
-        <div className="p-2 bg-[#1e1e1e] h-full">
+        <div className="bg-[#1e1e1e] h-full">
         <div className="flex border-b border-[#333]">
           {Object.keys(snippets).map((tab) => (
             <button
               key={tab}
               type="button" // Explicitly setting type for clarity, though often default for <button>
-              className={`px-3 py-1 text-xs font-medium transition-colors duration-200 ${
-                activeTab === tab ? "text-[#47ebb4] border-b-2 border-[#47ebb4]" : "text-gray-400 hover:text-gray-300"
+              className={`px-3 py-2 text-xs font-medium transition-colors duration-200 ${
+                activeTab === tab ? "text-[#47ebb4] border-b border-b-[#47ebb4] border-r-[#333] border-r" : "text-gray-400 hover:text-gray-300 border-r border-[#333]"
               }`}
               onClick={() => handleTabClick(tab)}
             >
@@ -259,8 +259,8 @@ export function APICard() {
             </button>
           ))}
         </div>
-        <div className="relative">
-          <pre className="p-4 text-sm overflow-x-auto font-mono">
+        <div className="relative overflow-x-scroll">
+          <pre className="p-4 text-sm font-mono">
             <code>{renderCode(snippets[activeTab].code)}</code>
           </pre>
         </div>
@@ -269,13 +269,3 @@ export function APICard() {
     </div>
   );
 }
-
-// Make sure you have a definition for SVGCard, for example:
-// const SVGCard = ({ title, description, width, textPosition, children }) => (
-//   <div className={`card ${width}`}>
-//     <h2>{title}</h2>
-//     <p>{description}</p>
-//     <div>{children}</div>
-//   </div>
-// );
-// export default SVGCard; // Or export it if it's in a separate file as assumed

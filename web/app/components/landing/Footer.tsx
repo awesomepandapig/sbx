@@ -3,12 +3,12 @@ export default function Footer() {
   const DOCS_URL = "https://docs.skyblock.exchange";
 
   return (
-    <footer className="bg-[#0e0e0e] border border-[rgba(38,38,38,.7)] rounded-3xl md:max-w-7xl m-auto mb-8 p-8 text-sm">
-      <div className="">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-12">
+    <footer className="m-auto max-w-7xl">
+      <div className="bg-[#0e0e0e] md:border border-[rgba(38,38,38,.7)] md:rounded-3xl md:mx-4 md:my-4 lg:my-8 p-8 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-7 gap-12">
           {/* SBX Column */}
-          <div className="md:col-span-4">
-            <h2 className="text-white text-6xl font-medium mb-2 md:mb-4">
+          <div className="lg:col-span-4 md:col-span-3">
+            <h2 className="text-white text-3xl md:text-6xl font-medium mb-2 md:mb-4">
               SBX
             </h2>
             <p className="text-neutral-400 text-sm mb-1">
@@ -18,7 +18,7 @@ export default function Footer() {
             </p>
 
             <a
-              className="flex items-center space-x-2 mt-6"
+              className="flex items-center space-x-2 mt-2 md:mt-6"
               href="https://status.skyblock.exchange"
             >
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
@@ -30,7 +30,7 @@ export default function Footer() {
 
           {/* Product Column */}
           <div>
-            <h3 className="text-white font-medium mb-2 text-2xl">Product</h3>
+            <h3 className="text-white font-medium mb-2 text-lg">Product</h3>
             <ul className="space-y-2">
               <li>
                 <a
@@ -45,7 +45,7 @@ export default function Footer() {
 
           {/* Developers Column */}
           <div>
-            <h3 className="text-white font-medium mb-2 text-2xl">Developers</h3>
+            <h3 className="text-white font-medium mb-2 text-lg">Developers</h3>
             <ul className="space-y-2">
               <li>
                 <a
@@ -76,7 +76,7 @@ export default function Footer() {
 
           {/* Company Column */}
           <div>
-            <h3 className="text-white font-medium mb-2 text-2xl">Company</h3>
+            <h3 className="text-white font-medium mb-2 text-lg">Company</h3>
             <ul className="space-y-2">
               <li>
                 <a

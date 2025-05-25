@@ -121,18 +121,10 @@ const usernamePool = [
   "BlazeWarrior",
 ];
 
-const generateRandomSuffix = () => {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
-  return Array.from({ length: 4 }, () =>
-    characters.charAt(Math.floor(Math.random() * characters.length)),
-  ).join("");
-};
-
 const getRandomUsername = () => {
   const baseUsername =
     usernamePool[Math.floor(Math.random() * usernamePool.length)];
-  return `${baseUsername}_${generateRandomSuffix()}`;
+  return baseUsername;
 };
 
 export default function PartyInvite() {

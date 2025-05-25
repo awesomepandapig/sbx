@@ -10,13 +10,13 @@ export default function SectionOne() {
     <div className="md:mt-24">
       {/* Heading Section */}
       <div className="w-full flex justify-center p-4">
-        <h1 className="text-center m-auto w-full font-semibold md:p-8 md:text-[44px] text-3xl bg-gradient-to-r from-pink-200 via-pink-300 to-70% to-white bg-clip-text text-transparent">
+        <h1 className="my-8 md:my-0 text-center leading-tight m-auto w-full font-semibold md:p-8 md:text-[44px] text-3xl bg-gradient-to-r from-pink-200 via-pink-300 to-70% to-white bg-clip-text text-transparent">
           Never Search for Structures Again
         </h1>
       </div>
 
       {/* Main Content Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card
           title="Trade structures"
           description="Trade Fairy & Jasper Mineshafts, Dragon's Lairs, and more."
@@ -89,7 +89,7 @@ export default function SectionOne() {
         <SVGCard
           title="Analyze the market"
           description="Access detailed historical trade data."
-          width="md:col-span-2"
+          width="lg:col-span-2"
           textPosition="center"
         >
           <PriceGraph />

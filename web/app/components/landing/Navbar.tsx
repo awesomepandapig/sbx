@@ -34,9 +34,6 @@ export default function Navbar() {
             >
               DOCS
             </a>
-            <button className="bg-[#333333] text-white px-6 py-2 rounded-full text-sm font-medium">
-              FEATURES
-            </button>
           </nav>
         </div>
         <button className="bg-[#3CFFFF] text-black px-6 py-2 rounded-full text-sm font-medium">

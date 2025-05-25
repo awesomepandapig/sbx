@@ -1,19 +1,19 @@
 import Card, { CardImage } from "./Card";
 import SVGCard from "./SVGCard";
-import { APICard } from "./APICard";
+import APICard from "./APICard";
 
 export default function SectionTwo() {
   return (
     <div className="md:mt-12">
       {/* Heading Section */}
       <div className="w-full flex justify-center p-4">
-        <h1 className="text-center m-auto w-full font-semibold md:p-8 md:text-[44px] text-3xl bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
+        <h1 className="my-8 md:my-0 text-center leading-tight m-auto w-full font-semibold md:p-8 md:text-[44px] text-3xl bg-gradient-to-r from-orange-200 via-orange-300 to-70% to-white bg-clip-text text-transparent">
           Engineered for Extreme Throughput
         </h1>
       </div>
 
       {/* Main Content Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card
           title="Open source"
           description="All code is MIT licensed, free for you to use as you please!"
@@ -36,7 +36,7 @@ export default function SectionTwo() {
         <Card
           title="Trade structures"
           description="Trade Fairy & Jasper mineshafts, Dragon's Lairs, and more."
-          width="md:col-span-2" // Can adjust width as needed
+          width="lg:col-span-2" // Can adjust width as needed
           aspectRatio="" // Aspect ratio control
           textPosition="left"
         >
@@ -53,8 +53,7 @@ export default function SectionTwo() {
           <p>Replace with animation of orders incoming</p>
         </Card>
 
-        <APICard/>
-
+        <APICard />
       </div>
     </div>
   );

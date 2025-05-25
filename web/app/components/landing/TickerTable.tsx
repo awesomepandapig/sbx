@@ -102,7 +102,7 @@ export default function TickerTable() {
   }, []);
 
   return (
-    <div className="hidden md:flex md:col-span-2 md:h-full bg-[#0e0e0e] rounded-[20px] overflow-hidden">
+    <div className="hidden lg:flex md:col-span-2 md:h-full bg-[#0e0e0e] rounded-[20px] overflow-hidden">
       <div className="flex-grow flex flex-col">
         <table className="w-full h-full text-sm text-left text-white table-fixed">
           <thead className="bg-[#1e1e1e] text-gray-400">
