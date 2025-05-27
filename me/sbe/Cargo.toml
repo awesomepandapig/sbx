@@ -2,7 +2,7 @@
 name = "sbe"
 version = "0.1.0"
 authors = ["sbetool"]
-description = "Test dictionary"
+description = "Matching Engine Protocol"
 edition = "2021"
 
 [lib]

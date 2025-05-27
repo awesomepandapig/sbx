@@ -1,3 +1,5 @@
+use super::publisher::ExecutionReportPublisher;
+
 use std::cmp::Ordering;
 use std::cmp::min;
 use std::collections::HashMap;
@@ -8,6 +10,7 @@ use slab::Slab;
 use sbe::ReadBuf;
 use sbe::message_header_codec::MessageHeaderDecoder;
 use sbe::new_order_single_codec::NewOrderSingleDecoder;
+use sbe::ord_rej_reason_enum::OrdRejReasonEnum;
 use sbe::ord_type_enum::OrdTypeEnum;
 use sbe::side_enum::SideEnum;
 
@@ -25,7 +28,6 @@ pub type AskQueue = PriorityQueue<usize, AskPriority>;
 
 pub trait OrderBookPriority: Ord + PartialOrd + Eq + PartialEq + std::fmt::Debug + Copy {
     fn price(&self) -> i64;
-    // fn seq_num(&self) -> u64;
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -35,7 +37,7 @@ pub struct BidPriority {
 }
 
 impl Ord for BidPriority {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         self.price
             .cmp(&other.price)
@@ -44,22 +46,17 @@ impl Ord for BidPriority {
 }
 
 impl PartialOrd for BidPriority {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl OrderBookPriority for BidPriority {
-    #[inline]
+    #[inline(always)]
     fn price(&self) -> i64 {
         self.price
     }
-
-    // #[inline]
-    // fn seq_num(&self) -> u64 {
-    //     self.seq_num
-    // }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -69,7 +66,7 @@ pub struct AskPriority {
 }
 
 impl Ord for AskPriority {
-    #[inline]
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         // Price priority first (lower is better for asks), then time priority (earlier is better)
         other
@@ -80,62 +77,65 @@ impl Ord for AskPriority {
 }
 
 impl PartialOrd for AskPriority {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl OrderBookPriority for AskPriority {
-    #[inline]
+    #[inline(always)]
     fn price(&self) -> i64 {
         self.price
     }
-
-    // #[inline]
-    // fn seq_num(&self) -> u64 {
-    //     self.seq_num
-    // }
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Order {
     // Hot fields (accessed frequently during matching) - first cache line (64 bytes)
-    leaves_qty: i64,       // 8 bytes - Remaining quantity to be filled
-    price: i64,            // 8 bytes - Price for Limit orders
-    cum_qty: i64,          // 8 bytes - Cumulative quantity filled
-    total_notional: i64,   // 8 bytes - Total value of fills
-    seq_num: u64,          // 8 bytes - Monotonic identifier for order
-    order_qty: i64,        // 8 bytes - Original quantity of the order
-    transact_time: u64,    // 8 bytes - Time of transaction from client
-    side: SideEnum,        // 4 bytes - Buy or Sell
-    ord_type: OrdTypeEnum, // 4 bytes - Limit or Market
+    pub leaves_qty: i64,       // 8 bytes - Remaining quantity to be filled
+    pub price: i64,            // 8 bytes - Price for Limit orders
+    pub cum_qty: i64,          // 8 bytes - Cumulative quantity filled
+    total_notional: i64,       // 8 bytes - Total value of fills
+    pub seq_num: u64,          // 8 bytes - Monotonic identifier for order
+    order_qty: i64,            // 8 bytes - Original quantity of the order
+    pub side: SideEnum,        // 4 bytes - Buy or Sell
+    pub ord_type: OrdTypeEnum, // 4 bytes - Limit or Market
     // 64 bytes total for first cache line
 
     // Cold fields (rarely accessed during matching) - subsequent cache lines
-    cl_ord_id: ClOrdIdType, // 16 bytes - Client Order ID
-    party_id: PartyIdType,  // 16 bytes - Trading Party ID
-    symbol: SymbolType,     // 6 bytes - Instrument symbol
-                            // Padding will be added by compiler as needed
+    pub cl_ord_id: ClOrdIdType, // 16 bytes - Client Order ID
+    pub party_id: PartyIdType,  // 16 bytes - Trading Party ID
+    transact_time: u64,         // 8 bytes - Time of transaction from client
+    pub symbol: SymbolType,     // 6 bytes - Instrument symbol
 }
 
 impl Order {
-    #[inline]
+    #[inline(always)]
     pub fn is_fully_filled(&self) -> bool {
         self.leaves_qty == 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn can_trade_with(&self, other_party_id: &PartyIdType) -> bool {
         self.party_id != *other_party_id
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn fill(&mut self, qty: i64, price: i64) {
         self.cum_qty += qty;
         self.leaves_qty -= qty;
         self.total_notional += qty * price;
+    }
+
+    #[inline(always)]
+    pub fn avg_px(&self) -> i64 {
+        if self.cum_qty > 0 {
+            self.total_notional / self.cum_qty
+        } else {
+            0
+        }
     }
 }
 
@@ -157,29 +157,29 @@ impl SideSpecificContext for Buy {
     type Priority = BidPriority;
     type OppositePriority = AskPriority;
 
-    #[inline]
+    #[inline(always)]
     fn push_to_queue(book: &mut OrderBook, order_idx: usize, priority: Self::Priority) {
         book.bid_pq.push(order_idx, priority);
     }
 
-    #[inline]
+    #[inline(always)]
     fn peek_opposite_queue(book: &OrderBook) -> Option<(usize, Self::OppositePriority)> {
         book.ask_pq
             .peek()
             .map(|(&idx, &priority_val)| (idx, priority_val))
     }
 
-    #[inline]
+    #[inline(always)]
     fn pop_opposite_queue(book: &mut OrderBook) -> Option<(usize, Self::OppositePriority)> {
         book.ask_pq.pop()
     }
 
-    #[inline]
+    #[inline(always)]
     fn create_priority(price: i64, seq_num: u64) -> Self::Priority {
         BidPriority { price, seq_num }
     }
 
-    #[inline]
+    #[inline(always)]
     fn can_aggressor_match(aggressor_price: i64, resting_price: i64) -> bool {
         aggressor_price >= resting_price
     }
@@ -189,29 +189,29 @@ impl SideSpecificContext for Sell {
     type Priority = AskPriority;
     type OppositePriority = BidPriority;
 
-    #[inline]
+    #[inline(always)]
     fn push_to_queue(book: &mut OrderBook, order_idx: usize, priority: Self::Priority) {
         book.ask_pq.push(order_idx, priority);
     }
 
-    #[inline]
+    #[inline(always)]
     fn peek_opposite_queue(book: &OrderBook) -> Option<(usize, Self::OppositePriority)> {
         book.bid_pq
             .peek()
             .map(|(&idx, &priority_val)| (idx, priority_val))
     }
 
-    #[inline]
+    #[inline(always)]
     fn pop_opposite_queue(book: &mut OrderBook) -> Option<(usize, Self::OppositePriority)> {
         book.bid_pq.pop()
     }
 
-    #[inline]
+    #[inline(always)]
     fn create_priority(price: i64, seq_num: u64) -> Self::Priority {
         AskPriority { price, seq_num }
     }
 
-    #[inline]
+    #[inline(always)]
     fn can_aggressor_match(aggressor_price: i64, resting_price: i64) -> bool {
         aggressor_price <= resting_price
     }
@@ -224,10 +224,11 @@ pub struct OrderBook {
     order_map: OrderMap,
     order_id_counter: u64,
     exec_id_counter: u64,
+    publisher: ExecutionReportPublisher,
 }
 
 impl OrderBook {
-    pub fn new() -> Self {
+    pub fn new(publisher: ExecutionReportPublisher) -> Self {
         Self {
             bid_pq: BidQueue::with_capacity(MAX_PRICE_LEVELS),
             ask_pq: AskQueue::with_capacity(MAX_PRICE_LEVELS),
@@ -235,46 +236,37 @@ impl OrderBook {
             order_map: OrderMap::with_capacity(MAX_ORDERS),
             order_id_counter: 0,
             exec_id_counter: 0,
+            publisher,
         }
     }
 
-    pub fn create_order(&mut self, header_decoder: MessageHeaderDecoder<ReadBuf<'_>>) {
+    pub fn process_new_order(&mut self, header_decoder: MessageHeaderDecoder<ReadBuf<'_>>) {
+        let order = self.decode_order(header_decoder);
+
         if self.order_pool.len() >= MAX_ORDERS {
-            // TODO: REJECT ORDERS IF BOOK SIZE IS TOO LARGE
-            println!("Book has exceeded capacity");
+            // TODO: REJECT ORDER WITH TEXT "BOOK_CAPACITY_EXCEEDED"
+            self.publish_reject(&order, OrdRejReasonEnum::Other);
             return;
         }
 
-        let order = self.decode_order(header_decoder);
-
-        match order.ord_type {
-            OrdTypeEnum::Market => {
-                // TODO: Implement market order processing
-                // self.process_market_order(order);
-            }
-            OrdTypeEnum::Limit => match order.side {
-                SideEnum::Buy => {
-                    self.process_limit_order::<Buy>(order);
-                }
-                SideEnum::Sell => {
-                    self.process_limit_order::<Sell>(order);
-                }
-                _ => {
-                    panic!("Unknown side for limit order: {:?}", order.side);
-                }
-            },
-            _ => {
-                panic!("Unsupported OrdType: {:?}", order.ord_type);
-            }
+        if self
+            .order_map
+            .contains_key(&(order.party_id, order.cl_ord_id))
+        {
+            self.publish_reject(&order, OrdRejReasonEnum::DuplicateOrder);
+            return;
         }
+
+        self.publish_new_order(&order);
+        self.route_order(order)
     }
 
+    #[inline(always)]
     fn decode_order(&mut self, header_decoder: MessageHeaderDecoder<ReadBuf<'_>>) -> Order {
         let order_decoder: NewOrderSingleDecoder<'_> =
             NewOrderSingleDecoder::default().header(header_decoder, 0);
 
         self.order_id_counter += 1;
-        let order_seq_num = self.order_id_counter;
         let order_qty_val = order_decoder.order_qty_decoder().mantissa();
 
         Order {
@@ -286,10 +278,36 @@ impl OrderBook {
             order_qty: order_qty_val,
             ord_type: order_decoder.ord_type(),
             price: order_decoder.price_decoder().mantissa(),
-            seq_num: order_seq_num,
+            seq_num: self.order_id_counter,
             leaves_qty: order_qty_val,
             cum_qty: 0,
             total_notional: 0,
+        }
+    }
+
+    #[inline(always)]
+    fn route_order(&mut self, order: Order) {
+        match order.ord_type {
+            OrdTypeEnum::Limit => self.process_limit_order(order),
+            OrdTypeEnum::Market => {
+                // TODO: Implement market order processing
+            }
+            _ => {
+                self.publish_reject(&order, OrdRejReasonEnum::Other)
+                // TODO: Log and continue
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn process_limit_order(&mut self, order: Order) {
+        match order.side {
+            SideEnum::Buy => self.match_and_add_order::<Buy>(order),
+            SideEnum::Sell => self.match_and_add_order::<Sell>(order),
+            _ => {
+                self.publish_reject(&order, OrdRejReasonEnum::Other);
+                // TODO: Log and continue
+            }
         }
     }
 
@@ -307,22 +325,23 @@ impl OrderBook {
     //     return;
     // }
 
-    #[inline]
+    #[inline(always)]
     fn add_order<S: SideSpecificContext>(&mut self, order: Order) {
-        let map_key: OrderBookKey = (order.party_id, order.cl_ord_id);
+        let order_key: OrderBookKey = (order.party_id, order.cl_ord_id);
         let priority = S::create_priority(order.price, order.seq_num);
         let order_idx = self.order_pool.insert(order);
-        self.order_map.insert(map_key, order_idx);
+        self.order_map.insert(order_key, order_idx);
         S::push_to_queue(self, order_idx, priority);
     }
 
-    fn process_limit_order<S: SideSpecificContext>(&mut self, mut aggressor_order: Order) {
+    #[inline(always)]
+    fn match_and_add_order<S: SideSpecificContext>(&mut self, mut aggressor_order: Order) {
         while aggressor_order.leaves_qty > 0 {
             match S::peek_opposite_queue(self) {
                 Some((resting_idx, resting_priority)) => {
                     let resting_price = resting_priority.price();
                     if S::can_aggressor_match(aggressor_order.price, resting_price) {
-                        if !self.process_match::<S>(
+                        if !self.execute_match::<S>(
                             &mut aggressor_order,
                             resting_idx,
                             resting_price,
@@ -343,13 +362,13 @@ impl OrderBook {
     }
 
     // Returns true if matching should continue, false if it should stop (e.g., self-trade)
-    fn process_match<S: SideSpecificContext>(
+    fn execute_match<S: SideSpecificContext>(
         &mut self,
         aggressor_order: &mut Order,
         resting_order_idx: usize,
         resting_order_price: i64,
     ) -> bool {
-        let (should_remove_resting, resting_map_key) = {
+        let (trade_qty, resting_order_snapshot, should_remove_resting, resting_order_key) = {
             let resting_order = self
                 .order_pool
                 .get_mut(resting_order_idx)
@@ -357,79 +376,81 @@ impl OrderBook {
 
             // Prevent self-trade
             if !aggressor_order.can_trade_with(&resting_order.party_id) {
-                // TODO: Cancel the aggressor
-                aggressor_order.cum_qty = aggressor_order.order_qty;
+                // TODO: REJECT WIH TEXT "SELF_TRADE_PREVENTION"
+                self.publish_reject(aggressor_order, OrdRejReasonEnum::Other);
                 aggressor_order.leaves_qty = 0;
                 return false;
             }
 
             let trade_qty = min(aggressor_order.leaves_qty, resting_order.leaves_qty);
-            let execution_price = resting_order_price;
+            let trade_px = resting_order_price;
 
-            aggressor_order.fill(trade_qty, execution_price);
-            resting_order.fill(trade_qty, execution_price);
+            aggressor_order.fill(trade_qty, trade_px);
+            resting_order.fill(trade_qty, trade_px);
 
-            self.exec_id_counter += 1;
-
-            // TODO: Replace with proper execution report publishing via SBE/FIX over Aeron
-            println!(
-                "Trade #{}: Aggressor {} {:?} vs Resting {} {:?}, Qty: {}, Price: {}",
-                self.exec_id_counter,
-                String::from_utf8_lossy(&aggressor_order.cl_ord_id),
-                aggressor_order.side,
-                String::from_utf8_lossy(&resting_order.cl_ord_id),
-                resting_order.side,
-                trade_qty,
-                execution_price
-            );
-
-            if resting_order.is_fully_filled() {
-                let key = (resting_order.party_id, resting_order.cl_ord_id);
-                (true, Some(key))
+            let resting_order_snapshot = *resting_order;
+            let should_remove_resting = resting_order.is_fully_filled();
+            let key = if should_remove_resting {
+                Some((resting_order.party_id, resting_order.cl_ord_id))
             } else {
-                (false, None)
-            }
+                None
+            };
+
+            (
+                trade_qty,
+                resting_order_snapshot,
+                should_remove_resting,
+                key,
+            )
         };
 
+        self.publish_trade(aggressor_order, trade_qty, resting_order_price);
+        self.publish_trade(&resting_order_snapshot, trade_qty, resting_order_price);
+
         if should_remove_resting {
-            self.remove_resting_order::<S>(resting_order_idx, resting_map_key);
+            self.remove_resting_order::<S>(resting_order_idx, resting_order_key);
         }
 
         true // Continue matching
     }
 
-    #[inline]
+    #[inline(always)]
     fn remove_resting_order<S: SideSpecificContext>(
         &mut self,
         order_idx: usize,
         map_key: Option<OrderBookKey>,
     ) {
-        S::pop_opposite_queue(self).expect("Resting order should be poppable from its queue");
+        S::pop_opposite_queue(self);
         self.order_pool.remove(order_idx);
         if let Some(key) = map_key {
             self.order_map.remove(&key);
         }
     }
 
-    // #[inline]
-    // fn publish_trade(
-    //     &self,
-    //     exec_id: u64,
-    //     aggressor_order: &Order,
-    //     resting_order: &Order,
-    //     qty: i64,
-    //     price: i64,
-    // ) {
-    //     return;
-    // }
+    #[inline(always)]
+    fn publish_new_order(&mut self, order: &Order) {
+        self.exec_id_counter += 1;
+        self.publisher
+            .publish_new_order(order, self.exec_id_counter);
+    }
 
-    // fn publish_reject() {
-    //     return;
-    // }
-}
+    #[inline(always)]
+    fn publish_trade(&mut self, order: &Order, qty: i64, px: i64) {
+        self.exec_id_counter += 1;
+        self.publisher
+            .publish_trade(order, self.exec_id_counter, qty, px);
+    }
 
-impl Default for OrderBook {
-    fn default() -> Self {
-        Self::new()
+    #[inline(always)]
+    fn publish_cancel(&mut self, order: &Order) {
+        self.exec_id_counter += 1;
+        self.publisher.publish_cancel(order, self.exec_id_counter);
+    }
+
+    #[inline(always)]
+    fn publish_reject(&mut self, order: &Order, reason: OrdRejReasonEnum) {
+        self.exec_id_counter += 1;
+        self.publisher
+            .publish_reject(order, self.exec_id_counter, reason);
     }
 }

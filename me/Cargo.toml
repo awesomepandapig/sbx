@@ -1,7 +1,7 @@
 [workspace]
 members = [ 
     "aeron-pub",
-    "aeron-sub",
-    "matching-engine",
+    "engine",
     "sbe"
 ]
+workspace.resolver = "3"

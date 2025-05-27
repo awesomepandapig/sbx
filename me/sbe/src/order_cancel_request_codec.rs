@@ -1,35 +1,35 @@
 use crate::*;
 
-pub use decoder::NewOrderSingleDecoder;
-pub use encoder::NewOrderSingleEncoder;
+pub use decoder::OrderCancelRequestDecoder;
+pub use encoder::OrderCancelRequestEncoder;
 
 pub use crate::SBE_SCHEMA_ID;
 pub use crate::SBE_SCHEMA_VERSION;
 pub use crate::SBE_SEMANTIC_VERSION;
 
-pub const SBE_BLOCK_LENGTH: u16 = 64;
-pub const SBE_TEMPLATE_ID: u16 = 1;
+pub const SBE_BLOCK_LENGTH: u16 = 63;
+pub const SBE_TEMPLATE_ID: u16 = 2;
 
 pub mod encoder {
     use super::*;
     use message_header_codec::*;
 
     #[derive(Debug, Default)]
-    pub struct NewOrderSingleEncoder<'a> {
+    pub struct OrderCancelRequestEncoder<'a> {
         buf: WriteBuf<'a>,
         initial_offset: usize,
         offset: usize,
         limit: usize,
     }
 
-    impl<'a> Writer<'a> for NewOrderSingleEncoder<'a> {
+    impl<'a> Writer<'a> for OrderCancelRequestEncoder<'a> {
         #[inline]
         fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
             &mut self.buf
         }
     }
 
-    impl<'a> Encoder<'a> for NewOrderSingleEncoder<'a> {
+    impl<'a> Encoder<'a> for OrderCancelRequestEncoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -41,7 +41,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a> NewOrderSingleEncoder<'a> {
+    impl<'a> OrderCancelRequestEncoder<'a> {
         pub fn wrap(mut self, buf: WriteBuf<'a>, offset: usize) -> Self {
             let limit = offset + SBE_BLOCK_LENGTH as usize;
             self.buf = buf;
@@ -66,8 +66,65 @@ pub mod encoder {
         }
 
         #[inline]
-        pub fn cl_ord_id_at(&mut self, index: usize, value: u8) {
+        pub fn orig_cl_ord_id_at(&mut self, index: usize, value: u8) {
             let offset = self.offset;
+            let buf = self.get_buf_mut();
+            buf.put_u8_at(offset + index, value);
+        }
+
+        /// primitive array field 'OrigClOrdID'
+        /// - min value: 0
+        /// - max value: 254
+        /// - null value: 0xff_u8
+        /// - characterEncoding: null
+        /// - semanticType: String
+        /// - encodedOffset: 0
+        /// - encodedLength: 16
+        /// - version: 0
+        #[inline]
+        pub fn orig_cl_ord_id(&mut self, value: &[u8]) {
+            debug_assert_eq!(16, value.len());
+            let offset = self.offset;
+            let buf = self.get_buf_mut();
+            buf.put_slice_at(offset, value);
+        }
+
+        /// primitive array field 'OrigClOrdID' from an Iterator
+        /// - min value: 0
+        /// - max value: 254
+        /// - null value: 0xff_u8
+        /// - characterEncoding: null
+        /// - semanticType: String
+        /// - encodedOffset: 0
+        /// - encodedLength: 16
+        /// - version: 0
+        #[inline]
+        pub fn orig_cl_ord_id_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
+            let offset = self.offset;
+            let buf = self.get_buf_mut();
+            for (i, v) in iter.enumerate() {
+                buf.put_u8_at(offset + i, v);
+            }
+        }
+
+        /// primitive array field 'OrigClOrdID' with zero padding
+        /// - min value: 0
+        /// - max value: 254
+        /// - null value: 0xff_u8
+        /// - characterEncoding: null
+        /// - semanticType: String
+        /// - encodedOffset: 0
+        /// - encodedLength: 16
+        /// - version: 0
+        #[inline]
+        pub fn orig_cl_ord_id_zero_padded(&mut self, value: &[u8]) {
+            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            self.orig_cl_ord_id_from_iter(iter);
+        }
+
+        #[inline]
+        pub fn cl_ord_id_at(&mut self, index: usize, value: u8) {
+            let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             buf.put_u8_at(offset + index, value);
         }
@@ -78,13 +135,13 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 0
+        /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
         pub fn cl_ord_id(&mut self, value: &[u8]) {
             debug_assert_eq!(16, value.len());
-            let offset = self.offset;
+            let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             buf.put_slice_at(offset, value);
         }
@@ -95,12 +152,12 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 0
+        /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
         pub fn cl_ord_id_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
-            let offset = self.offset;
+            let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
                 buf.put_u8_at(offset + i, v);
@@ -113,7 +170,7 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 0
+        /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
@@ -124,7 +181,7 @@ pub mod encoder {
 
         #[inline]
         pub fn party_id_at(&mut self, index: usize, value: u8) {
-            let offset = self.offset + 16;
+            let offset = self.offset + 32;
             let buf = self.get_buf_mut();
             buf.put_u8_at(offset + index, value);
         }
@@ -135,13 +192,13 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 16
+        /// - encodedOffset: 32
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
         pub fn party_id(&mut self, value: &[u8]) {
             debug_assert_eq!(16, value.len());
-            let offset = self.offset + 16;
+            let offset = self.offset + 32;
             let buf = self.get_buf_mut();
             buf.put_slice_at(offset, value);
         }
@@ -152,12 +209,12 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 16
+        /// - encodedOffset: 32
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
         pub fn party_id_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
-            let offset = self.offset + 16;
+            let offset = self.offset + 32;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
                 buf.put_u8_at(offset + i, v);
@@ -170,7 +227,7 @@ pub mod encoder {
         /// - null value: 0xff_u8
         /// - characterEncoding: null
         /// - semanticType: String
-        /// - encodedOffset: 16
+        /// - encodedOffset: 32
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
@@ -182,22 +239,8 @@ pub mod encoder {
         /// COMPOSITE ENCODER
         #[inline]
         pub fn transact_time_encoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
-            let offset = self.offset + 32;
-            utc_timestamp_nanos_codec::UTCTimestampNanosEncoder::default().wrap(self, offset)
-        }
-
-        /// COMPOSITE ENCODER
-        #[inline]
-        pub fn order_qty_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
-            let offset = self.offset + 40;
-            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
-        }
-
-        /// COMPOSITE ENCODER
-        #[inline]
-        pub fn price_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
             let offset = self.offset + 48;
-            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
+            utc_timestamp_nanos_codec::UTCTimestampNanosEncoder::default().wrap(self, offset)
         }
 
         #[inline]
@@ -264,13 +307,6 @@ pub mod encoder {
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
-        /// REQUIRED enum
-        #[inline]
-        pub fn ord_type(&mut self, value: ord_type_enum::OrdTypeEnum) {
-            let offset = self.offset + 63;
-            self.get_buf_mut().put_u8_at(offset, value as u8)
-        }
-
     }
 
 } // end encoder
@@ -280,7 +316,7 @@ pub mod decoder {
     use message_header_codec::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct NewOrderSingleDecoder<'a> {
+    pub struct OrderCancelRequestDecoder<'a> {
         buf: ReadBuf<'a>,
         initial_offset: usize,
         offset: usize,
@@ -289,21 +325,21 @@ pub mod decoder {
         pub acting_version: u16,
     }
 
-    impl ActingVersion for NewOrderSingleDecoder<'_> {
+    impl ActingVersion for OrderCancelRequestDecoder<'_> {
         #[inline]
         fn acting_version(&self) -> u16 {
             self.acting_version
         }
     }
 
-    impl<'a> Reader<'a> for NewOrderSingleDecoder<'a> {
+    impl<'a> Reader<'a> for OrderCancelRequestDecoder<'a> {
         #[inline]
         fn get_buf(&self) -> &ReadBuf<'a> {
             &self.buf
         }
     }
 
-    impl<'a> Decoder<'a> for NewOrderSingleDecoder<'a> {
+    impl<'a> Decoder<'a> for OrderCancelRequestDecoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -315,7 +351,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a> NewOrderSingleDecoder<'a> {
+    impl<'a> OrderCancelRequestDecoder<'a> {
         pub fn wrap(
             mut self,
             buf: ReadBuf<'a>,
@@ -352,36 +388,28 @@ pub mod decoder {
         }
 
         #[inline]
-        pub fn cl_ord_id(&self) -> [u8; 16] {
+        pub fn orig_cl_ord_id(&self) -> [u8; 16] {
             let buf = self.get_buf();
             ReadBuf::get_bytes_at(buf.data, self.offset)
         }
 
         #[inline]
-        pub fn party_id(&self) -> [u8; 16] {
+        pub fn cl_ord_id(&self) -> [u8; 16] {
             let buf = self.get_buf();
             ReadBuf::get_bytes_at(buf.data, self.offset + 16)
+        }
+
+        #[inline]
+        pub fn party_id(&self) -> [u8; 16] {
+            let buf = self.get_buf();
+            ReadBuf::get_bytes_at(buf.data, self.offset + 32)
         }
 
         /// COMPOSITE DECODER
         #[inline]
         pub fn transact_time_decoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
-            let offset = self.offset + 32;
-            utc_timestamp_nanos_codec::UTCTimestampNanosDecoder::default().wrap(self, offset)
-        }
-
-        /// COMPOSITE DECODER
-        #[inline]
-        pub fn order_qty_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
-            let offset = self.offset + 40;
-            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
-        }
-
-        /// COMPOSITE DECODER
-        #[inline]
-        pub fn price_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
             let offset = self.offset + 48;
-            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
+            utc_timestamp_nanos_codec::UTCTimestampNanosDecoder::default().wrap(self, offset)
         }
 
         #[inline]
@@ -394,12 +422,6 @@ pub mod decoder {
         #[inline]
         pub fn side(&self) -> side_enum::SideEnum {
             self.get_buf().get_u8_at(self.offset + 62).into()
-        }
-
-        /// REQUIRED enum
-        #[inline]
-        pub fn ord_type(&self) -> ord_type_enum::OrdTypeEnum {
-            self.get_buf().get_u8_at(self.offset + 63).into()
         }
 
     }

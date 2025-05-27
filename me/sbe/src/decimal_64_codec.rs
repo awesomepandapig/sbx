@@ -101,7 +101,7 @@ pub mod decoder {
         /// CONSTANT 
         #[inline]
         pub fn exponent(&self) -> i8 {
-            -2
+            -8
         }
 
     }

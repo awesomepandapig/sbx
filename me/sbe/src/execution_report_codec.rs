@@ -1,35 +1,35 @@
 use crate::*;
 
-pub use decoder::NewOrderSingleDecoder;
-pub use encoder::NewOrderSingleEncoder;
+pub use decoder::ExecutionReportDecoder;
+pub use encoder::ExecutionReportEncoder;
 
 pub use crate::SBE_SCHEMA_ID;
 pub use crate::SBE_SCHEMA_VERSION;
 pub use crate::SBE_SEMANTIC_VERSION;
 
-pub const SBE_BLOCK_LENGTH: u16 = 64;
-pub const SBE_TEMPLATE_ID: u16 = 1;
+pub const SBE_BLOCK_LENGTH: u16 = 114;
+pub const SBE_TEMPLATE_ID: u16 = 3;
 
 pub mod encoder {
     use super::*;
     use message_header_codec::*;
 
     #[derive(Debug, Default)]
-    pub struct NewOrderSingleEncoder<'a> {
+    pub struct ExecutionReportEncoder<'a> {
         buf: WriteBuf<'a>,
         initial_offset: usize,
         offset: usize,
         limit: usize,
     }
 
-    impl<'a> Writer<'a> for NewOrderSingleEncoder<'a> {
+    impl<'a> Writer<'a> for ExecutionReportEncoder<'a> {
         #[inline]
         fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
             &mut self.buf
         }
     }
 
-    impl<'a> Encoder<'a> for NewOrderSingleEncoder<'a> {
+    impl<'a> Encoder<'a> for ExecutionReportEncoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -41,7 +41,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a> NewOrderSingleEncoder<'a> {
+    impl<'a> ExecutionReportEncoder<'a> {
         pub fn wrap(mut self, buf: WriteBuf<'a>, offset: usize) -> Self {
             let limit = offset + SBE_BLOCK_LENGTH as usize;
             self.buf = buf;
@@ -179,30 +179,88 @@ pub mod encoder {
             self.party_id_from_iter(iter);
         }
 
+        /// primitive field 'OrderID'
+        /// - min value: 0
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
+        /// - characterEncoding: null
+        /// - semanticType: uint64
+        /// - encodedOffset: 32
+        /// - encodedLength: 8
+        /// - version: 0
+        #[inline]
+        pub fn order_id(&mut self, value: u64) {
+            let offset = self.offset + 32;
+            self.get_buf_mut().put_u64_at(offset, value);
+        }
+
+        /// primitive field 'ExecID'
+        /// - min value: 0
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
+        /// - characterEncoding: null
+        /// - semanticType: uint64
+        /// - encodedOffset: 40
+        /// - encodedLength: 8
+        /// - version: 0
+        #[inline]
+        pub fn exec_id(&mut self, value: u64) {
+            let offset = self.offset + 40;
+            self.get_buf_mut().put_u64_at(offset, value);
+        }
+
         /// COMPOSITE ENCODER
         #[inline]
         pub fn transact_time_encoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
-            let offset = self.offset + 32;
+            let offset = self.offset + 48;
             utc_timestamp_nanos_codec::UTCTimestampNanosEncoder::default().wrap(self, offset)
         }
 
         /// COMPOSITE ENCODER
         #[inline]
-        pub fn order_qty_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
-            let offset = self.offset + 40;
+        pub fn price_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 56;
             decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
         }
 
         /// COMPOSITE ENCODER
         #[inline]
-        pub fn price_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
-            let offset = self.offset + 48;
+        pub fn last_qty_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 64;
+            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE ENCODER
+        #[inline]
+        pub fn last_px_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 72;
+            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE ENCODER
+        #[inline]
+        pub fn leaves_qty_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 80;
+            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE ENCODER
+        #[inline]
+        pub fn cum_qty_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 88;
+            decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE ENCODER
+        #[inline]
+        pub fn avg_px_encoder(self) -> decimal_64_codec::Decimal64Encoder<Self> {
+            let offset = self.offset + 96;
             decimal_64_codec::Decimal64Encoder::default().wrap(self, offset)
         }
 
         #[inline]
         pub fn symbol_at(&mut self, index: usize, value: u8) {
-            let offset = self.offset + 56;
+            let offset = self.offset + 104;
             let buf = self.get_buf_mut();
             buf.put_u8_at(offset + index, value);
         }
@@ -213,13 +271,13 @@ pub mod encoder {
         /// - null value: 0_u8
         /// - characterEncoding: ISO_8859_1
         /// - semanticType: String
-        /// - encodedOffset: 56
+        /// - encodedOffset: 104
         /// - encodedLength: 6
         /// - version: 0
         #[inline]
         pub fn symbol(&mut self, value: &[u8]) {
             debug_assert_eq!(6, value.len());
-            let offset = self.offset + 56;
+            let offset = self.offset + 104;
             let buf = self.get_buf_mut();
             buf.put_slice_at(offset, value);
         }
@@ -230,12 +288,12 @@ pub mod encoder {
         /// - null value: 0_u8
         /// - characterEncoding: ISO_8859_1
         /// - semanticType: String
-        /// - encodedOffset: 56
+        /// - encodedOffset: 104
         /// - encodedLength: 6
         /// - version: 0
         #[inline]
         pub fn symbol_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
-            let offset = self.offset + 56;
+            let offset = self.offset + 104;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
                 buf.put_u8_at(offset + i, v);
@@ -248,7 +306,7 @@ pub mod encoder {
         /// - null value: 0_u8
         /// - characterEncoding: ISO_8859_1
         /// - semanticType: String
-        /// - encodedOffset: 56
+        /// - encodedOffset: 104
         /// - encodedLength: 6
         /// - version: 0
         #[inline]
@@ -259,15 +317,29 @@ pub mod encoder {
 
         /// REQUIRED enum
         #[inline]
-        pub fn side(&mut self, value: side_enum::SideEnum) {
-            let offset = self.offset + 62;
+        pub fn exec_type(&mut self, value: exec_type_enum::ExecTypeEnum) {
+            let offset = self.offset + 110;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn ord_type(&mut self, value: ord_type_enum::OrdTypeEnum) {
-            let offset = self.offset + 63;
+        pub fn ord_status(&mut self, value: ord_status_enum::OrdStatusEnum) {
+            let offset = self.offset + 111;
+            self.get_buf_mut().put_u8_at(offset, value as u8)
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn ord_rej_reason(&mut self, value: ord_rej_reason_enum::OrdRejReasonEnum) {
+            let offset = self.offset + 112;
+            self.get_buf_mut().put_u8_at(offset, value as u8)
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn side(&mut self, value: side_enum::SideEnum) {
+            let offset = self.offset + 113;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
@@ -280,7 +352,7 @@ pub mod decoder {
     use message_header_codec::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct NewOrderSingleDecoder<'a> {
+    pub struct ExecutionReportDecoder<'a> {
         buf: ReadBuf<'a>,
         initial_offset: usize,
         offset: usize,
@@ -289,21 +361,21 @@ pub mod decoder {
         pub acting_version: u16,
     }
 
-    impl ActingVersion for NewOrderSingleDecoder<'_> {
+    impl ActingVersion for ExecutionReportDecoder<'_> {
         #[inline]
         fn acting_version(&self) -> u16 {
             self.acting_version
         }
     }
 
-    impl<'a> Reader<'a> for NewOrderSingleDecoder<'a> {
+    impl<'a> Reader<'a> for ExecutionReportDecoder<'a> {
         #[inline]
         fn get_buf(&self) -> &ReadBuf<'a> {
             &self.buf
         }
     }
 
-    impl<'a> Decoder<'a> for NewOrderSingleDecoder<'a> {
+    impl<'a> Decoder<'a> for ExecutionReportDecoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -315,7 +387,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a> NewOrderSingleDecoder<'a> {
+    impl<'a> ExecutionReportDecoder<'a> {
         pub fn wrap(
             mut self,
             buf: ReadBuf<'a>,
@@ -363,43 +435,95 @@ pub mod decoder {
             ReadBuf::get_bytes_at(buf.data, self.offset + 16)
         }
 
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn order_id(&self) -> u64 {
+            self.get_buf().get_u64_at(self.offset + 32)
+        }
+
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn exec_id(&self) -> u64 {
+            self.get_buf().get_u64_at(self.offset + 40)
+        }
+
         /// COMPOSITE DECODER
         #[inline]
         pub fn transact_time_decoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
-            let offset = self.offset + 32;
+            let offset = self.offset + 48;
             utc_timestamp_nanos_codec::UTCTimestampNanosDecoder::default().wrap(self, offset)
         }
 
         /// COMPOSITE DECODER
         #[inline]
-        pub fn order_qty_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
-            let offset = self.offset + 40;
+        pub fn price_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 56;
             decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
         }
 
         /// COMPOSITE DECODER
         #[inline]
-        pub fn price_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
-            let offset = self.offset + 48;
+        pub fn last_qty_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 64;
+            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE DECODER
+        #[inline]
+        pub fn last_px_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 72;
+            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE DECODER
+        #[inline]
+        pub fn leaves_qty_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 80;
+            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE DECODER
+        #[inline]
+        pub fn cum_qty_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 88;
+            decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
+        }
+
+        /// COMPOSITE DECODER
+        #[inline]
+        pub fn avg_px_decoder(self) -> decimal_64_codec::Decimal64Decoder<Self> {
+            let offset = self.offset + 96;
             decimal_64_codec::Decimal64Decoder::default().wrap(self, offset)
         }
 
         #[inline]
         pub fn symbol(&self) -> [u8; 6] {
             let buf = self.get_buf();
-            ReadBuf::get_bytes_at(buf.data, self.offset + 56)
+            ReadBuf::get_bytes_at(buf.data, self.offset + 104)
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn exec_type(&self) -> exec_type_enum::ExecTypeEnum {
+            self.get_buf().get_u8_at(self.offset + 110).into()
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn ord_status(&self) -> ord_status_enum::OrdStatusEnum {
+            self.get_buf().get_u8_at(self.offset + 111).into()
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn ord_rej_reason(&self) -> ord_rej_reason_enum::OrdRejReasonEnum {
+            self.get_buf().get_u8_at(self.offset + 112).into()
         }
 
         /// REQUIRED enum
         #[inline]
         pub fn side(&self) -> side_enum::SideEnum {
-            self.get_buf().get_u8_at(self.offset + 62).into()
-        }
-
-        /// REQUIRED enum
-        #[inline]
-        pub fn ord_type(&self) -> ord_type_enum::OrdTypeEnum {
-            self.get_buf().get_u8_at(self.offset + 63).into()
+            self.get_buf().get_u8_at(self.offset + 113).into()
         }
 
     }

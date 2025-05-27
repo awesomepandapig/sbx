@@ -6,10 +6,18 @@
 
 use ::core::{convert::TryInto};
 
+pub mod cxl_rej_reason_enum;
+pub mod cxl_rej_response_to_enum;
 pub mod decimal_64_codec;
+pub mod exec_type_enum;
+pub mod execution_report_codec;
 pub mod message_header_codec;
 pub mod new_order_single_codec;
+pub mod ord_rej_reason_enum;
+pub mod ord_status_enum;
 pub mod ord_type_enum;
+pub mod order_cancel_reject_codec;
+pub mod order_cancel_request_codec;
 pub mod side_enum;
 pub mod utc_timestamp_nanos_codec;
 
