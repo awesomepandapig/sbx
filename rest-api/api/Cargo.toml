@@ -1,19 +1,16 @@
 [package]
-name = "aeron-pub"
+name = "rest-api"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 aeron-rs = "0.1.8"
-clap = "4.5.38"
-ctrlc = "3.4.7"
-hdrhistogram = "7.5.4"
-hex = "0.4.3"
-lazy_static = "1.5.0"
-nix = "0.30.1"
-pretty_env_logger = "0.5.0"
-rand = "0.9.1"
+axum = "0.8.4"
+chrono = "0.4.41"
+env_logger = "0.11.8"
+log = "0.4.27"
 sbe = { path = "../sbe" }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "1.17.0", features = ["v4"] }

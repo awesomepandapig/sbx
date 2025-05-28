@@ -14,8 +14,8 @@ use sbe::ord_rej_reason_enum::OrdRejReasonEnum;
 use sbe::ord_type_enum::OrdTypeEnum;
 use sbe::side_enum::SideEnum;
 
-const MAX_ORDERS: usize = 2_000_000;
-const MAX_PRICE_LEVELS: usize = 1_000_000;
+const MAX_ORDERS: usize = 4_000_000;
+const MAX_PRICE_LEVELS: usize = 2_000_000;
 
 pub type ClOrdIdType = [u8; 16];
 pub type PartyIdType = [u8; 16];
