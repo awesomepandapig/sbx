@@ -4,7 +4,7 @@ use aeron_handler::{build_context, create_publication, create_subscription, get_
 mod messages;
 use aeron_rs::publication::Publication;
 use aeron_rs::subscription::Subscription;
-use messages::read_message;
+// use messages::read_message;
 
 mod order;
 use order::create_order_buffer;

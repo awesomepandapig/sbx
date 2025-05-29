@@ -25,7 +25,7 @@ pub struct CreateOrder {
 #[derive(Debug)]
 struct ParsedOrderInput {
     cl_ord_id: [u8; 16],
-    party_id: [u8; 16],
+    account: [u8; 16],
     symbol: [u8; 6],
     side: SideEnum,
     ord_type: OrdTypeEnum,
@@ -36,7 +36,7 @@ struct ParsedOrderInput {
 
 fn parse_and_validate_order_payload(payload: &CreateOrder) -> Result<ParsedOrderInput, AppError> {
     let cl_ord_id = Uuid::new_v4().into_bytes(); // Uuid::into_bytes() returns [u8; 16] directly
-    let party_id = Uuid::new_v4().into_bytes(); // Hardcoded for now, ensure it's [u8; 16]
+    let account = Uuid::new_v4().into_bytes(); // Hardcoded for now, ensure it's [u8; 16]
 
     // --- Symbol Validation ---
     // TODO: VALIDATE SYMBOL (enhance this as needed)
@@ -114,7 +114,7 @@ fn parse_and_validate_order_payload(payload: &CreateOrder) -> Result<ParsedOrder
 
     Ok(ParsedOrderInput {
         cl_ord_id,
-        party_id,
+        account,
         symbol,
         side,
         ord_type,
@@ -136,13 +136,13 @@ pub async fn post_order(
     // TODO: VALIDATE PRICE AND QUANTITY ARE IN-BOUNDS
     // TODO: VALIDATE USER FUNDS
 
-    let party_id = b"AAAAAAAAAAAAAAAA"; // FOR NOW SINCE WE DON'T HAVE AUTH IMPLEMENTED WE WILL JUST USE A HARDCODED ID
+    let account = b"AAAAAAAAAAAAAAAA"; // FOR NOW SINCE WE DON'T HAVE AUTH IMPLEMENTED WE WILL JUST USE A HARDCODED ID
 
     let parsed_input = parse_and_validate_order_payload(&payload)?;
 
     let order_buffer = create_order_buffer(
         &parsed_input.cl_ord_id,
-        &parsed_input.party_id,
+        &parsed_input.account,
         &parsed_input.symbol,
         parsed_input.side,
         parsed_input.ord_type,

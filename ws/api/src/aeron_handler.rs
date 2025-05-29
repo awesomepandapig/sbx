@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 use std::thread::yield_now;
 
 use aeron_rs::aeron::Aeron;
-use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
 use aeron_rs::context::Context;
 use aeron_rs::subscription::Subscription;
 use aeron_rs::utils::errors::AeronError;

@@ -118,22 +118,18 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn cl_ord_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value
-                .iter()
-                .copied()
-                .chain(std::iter::repeat(0_u8))
-                .take(16);
+            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
             self.cl_ord_id_from_iter(iter);
         }
 
         #[inline]
-        pub fn party_id_at(&mut self, index: usize, value: u8) {
+        pub fn account_at(&mut self, index: usize, value: u8) {
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             buf.put_u8_at(offset + index, value);
         }
 
-        /// primitive array field 'PartyID'
+        /// primitive array field 'Account'
         /// - min value: 0
         /// - max value: 254
         /// - null value: 0xff_u8
@@ -143,14 +139,14 @@ pub mod encoder {
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn party_id(&mut self, value: &[u8]) {
+        pub fn account(&mut self, value: &[u8]) {
             debug_assert_eq!(16, value.len());
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             buf.put_slice_at(offset, value);
         }
 
-        /// primitive array field 'PartyID' from an Iterator
+        /// primitive array field 'Account' from an Iterator
         /// - min value: 0
         /// - max value: 254
         /// - null value: 0xff_u8
@@ -160,7 +156,7 @@ pub mod encoder {
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn party_id_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
+        pub fn account_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
@@ -168,7 +164,7 @@ pub mod encoder {
             }
         }
 
-        /// primitive array field 'PartyID' with zero padding
+        /// primitive array field 'Account' with zero padding
         /// - min value: 0
         /// - max value: 254
         /// - null value: 0xff_u8
@@ -178,20 +174,14 @@ pub mod encoder {
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn party_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value
-                .iter()
-                .copied()
-                .chain(std::iter::repeat(0_u8))
-                .take(16);
-            self.party_id_from_iter(iter);
+        pub fn account_zero_padded(&mut self, value: &[u8]) {
+            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            self.account_from_iter(iter);
         }
 
         /// COMPOSITE ENCODER
         #[inline]
-        pub fn transact_time_encoder(
-            self,
-        ) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
+        pub fn transact_time_encoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
             let offset = self.offset + 32;
             utc_timestamp_nanos_codec::UTCTimestampNanosEncoder::default().wrap(self, offset)
         }
@@ -280,7 +270,9 @@ pub mod encoder {
             let offset = self.offset + 63;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
+
     }
+
 } // end encoder
 
 pub mod decoder {
@@ -366,16 +358,14 @@ pub mod decoder {
         }
 
         #[inline]
-        pub fn party_id(&self) -> [u8; 16] {
+        pub fn account(&self) -> [u8; 16] {
             let buf = self.get_buf();
             ReadBuf::get_bytes_at(buf.data, self.offset + 16)
         }
 
         /// COMPOSITE DECODER
         #[inline]
-        pub fn transact_time_decoder(
-            self,
-        ) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
+        pub fn transact_time_decoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
             let offset = self.offset + 32;
             utc_timestamp_nanos_codec::UTCTimestampNanosDecoder::default().wrap(self, offset)
         }
@@ -411,5 +401,8 @@ pub mod decoder {
         pub fn ord_type(&self) -> ord_type_enum::OrdTypeEnum {
             self.get_buf().get_u8_at(self.offset + 63).into()
         }
+
     }
+
 } // end decoder
+

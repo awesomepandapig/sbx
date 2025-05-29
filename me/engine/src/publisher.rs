@@ -1,5 +1,6 @@
 use super::orderbook::Order;
 
+use std::i64;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
@@ -18,6 +19,7 @@ const MAX_MESSAGE_SIZE: usize = SBE_BLOCK_LENGTH as usize + ENCODED_LENGTH;
 
 #[derive(Clone, Copy)]
 pub struct Trade {
+    pub match_id: u64,
     pub qty: i64,
     pub px: i64,
 }
@@ -73,16 +75,22 @@ impl ExecutionReport {
     #[inline(always)]
     fn set_optional_fields<'a>(
         self,
-        encoder: ExecutionReportEncoder<'a>,
+        mut encoder: ExecutionReportEncoder<'a>,
         order: &Order,
     ) -> ExecutionReportEncoder<'a> {
         match self {
             ExecutionReport::Trade(trade) => {
-                let encoder = Self::set_last_qty(encoder, trade.qty);
+                encoder.trd_match_id(trade.match_id);
                 let encoder = Self::set_last_px(encoder, trade.px);
+                let encoder = Self::set_last_qty(encoder, trade.qty);
                 Self::set_avg_px(encoder, order.avg_px())
             }
-            _ => encoder,
+            _ => {
+                encoder.trd_match_id(u64::MAX);
+                let encoder = Self::set_last_px(encoder, i64::MIN);
+                let encoder = Self::set_last_qty(encoder, i64::MIN);
+                Self::set_avg_px(encoder, i64::MIN)
+            },
         }
     }
 
@@ -116,7 +124,6 @@ impl ExecutionReport {
 
 pub struct ExecutionReportPublisher {
     publication: Arc<Mutex<Publication>>, // Aeron publisher
-    aligned_buffer: AlignedBuffer,
     atomic_buffer: AtomicBuffer,
     sbe_buffer: Vec<u8>,
 }
@@ -127,7 +134,6 @@ impl ExecutionReportPublisher {
         let atomic_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
         Self {
             publication,
-            aligned_buffer,
             atomic_buffer,
             sbe_buffer: vec![0; MAX_MESSAGE_SIZE],
         }
@@ -139,8 +145,8 @@ impl ExecutionReportPublisher {
     }
 
     #[inline(always)]
-    pub fn publish_trade(&mut self, order: &Order, exec_id: u64, qty: i64, px: i64) {
-        let trade_report = ExecutionReport::Trade(Trade { qty, px });
+    pub fn publish_trade(&mut self, order: &Order, exec_id: u64, match_id: u64, qty: i64, px: i64) {
+        let trade_report = ExecutionReport::Trade(Trade { match_id, qty, px });
         self.publish_execution_report(&trade_report, order, exec_id);
     }
 
@@ -188,7 +194,7 @@ impl ExecutionReportPublisher {
         exec_id: u64,
     ) -> ExecutionReportEncoder<'a> {
         encoder.cl_ord_id(&order.cl_ord_id);
-        encoder.party_id(&order.party_id);
+        encoder.account(&order.account);
         encoder.order_id(order.seq_num);
         encoder.exec_id(exec_id);
         encoder.symbol(&order.symbol);
@@ -259,7 +265,7 @@ impl ExecutionReportPublisher {
         let result = self.publication.lock().unwrap().offer(self.atomic_buffer);
 
         match result {
-            Ok(code) => {}
+            Ok(_code) => {}
             Err(err) => {
                 eprintln!("Offer failed: {}", err);
             }

@@ -29,6 +29,15 @@
             <type name="time" primitiveType="uint64"/>
             <type name="unit" primitiveType="uint8" presence="constant" valueRef="TimeUnit.nanosecond"/>
         </composite>
+        
+        <!-- <enum name="partyRoleEnum" encodingType="uint8">
+            <validValue name="ExecutingFirm">1</validValue>
+            <validValue name="ContraFirm">17</validValue>
+        </enum>
+
+        <enum name="partyIDSourceEnum" encodingType="enumEncoding">
+            <validValue name="Proprietary">D</validValue>
+        </enum> -->
 
         <enum name="TimeUnit" encodingType="uint8">
             <validValue name="second">0</validValue>
@@ -74,7 +83,7 @@
             <validValue name="OrderCancelReplaceRequest">2</validValue>
         </enum>
 
-        <enum name="cxlRejReasonEnum" encodingType="enumEncoding">
+        <enum name="cxlRejReasonEnum" encodingType="uint8">
             <validValue name="TooLateToCancel">0</validValue>
             <validValue name="UnknownOrder">1</validValue>
             <validValue name="DuplicateClOrdID">6</validValue>        
@@ -83,7 +92,7 @@
 
     <sbe:message name="NewOrderSingle" id="1" blockLength="64" semanticType="D">
         <field name="ClOrdId"      id="11"   type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
-        <field name="PartyID"      id="448"  type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
+        <field name="Account"      id="1"    type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
         <field name="TransactTime" id="60"   type="UTCTimestampNanos" semanticType="UTCTimestamp"/> <!-- 8 bytes -->
         <field name="OrderQty"     id="38"   type="decimal64"         semanticType="Qty"/>          <!-- 8 bytes -->
         <field name="Price"        id="44"   type="decimal64"         semanticType="Price" presence="optional"/> <!-- 8 bytes -->
@@ -101,9 +110,16 @@
         <field name="Side"         id="54"   type="sideEnum"          semanticType="char"/>         <!-- 1 byte -->
     </sbe:message>
 
-    <sbe:message name="ExecutionReport" id="3" blockLength="114" semanticType="8">
+    <!-- <group name="NoPartyIDs" id="453" dimensionType="uint8" semanticType="NumInGroup">
+        <field name="PartyID"       id="448"  type="uuid"              semanticType="String"/>
+        <field name="PartyIDSource" id="447"  type="partyIDSourceEnum" semanticType="char"/>
+        <field name="PartyRole"     id="452"  type="partyRoleEnum"     semanticType="int"/>
+    </group> -->
+
+    <sbe:message name="ExecutionReport" id="3" blockLength="130" semanticType="8">
+        <field name="Account"      id="1"    type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
         <field name="ClOrdId"      id="11"   type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
-        <field name="PartyID"      id="448"  type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
+        <field name="ContraID"     id="448"  type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
         <field name="OrderID"      id="37"   type="uint64"            semanticType="uint64"/>       <!-- 8 bytes -->
         <field name="ExecID"       id="17"   type="uint64"            semanticType="uint64"/>       <!-- 8 bytes -->
         <field name="TransactTime" id="60"   type="UTCTimestampNanos" semanticType="UTCTimestamp"/> <!-- 8 bytes -->
@@ -123,7 +139,7 @@
     <sbe:message name="OrderCancelReject" id="4" blockLength="43" semanticType="9">
         <field name="ClOrdId"          id="11"   type="uuid"                  semanticType="String"/>  <!-- 16 bytes -->
         <field name="OrigClOrdID"      id="41"   type="uuid"                  semanticType="String"/>  <!-- 16 bytes -->
-        <field name="OrderID"          id="37"   type="uint64"                semanticType="uint64"/>  <!-- 8 bytes --> <!-- If CxlRejReason="Unknown order", specify "NONE". -->
+        <field name="OrderID"          id="37"   type="uint64"                semanticType="String"/>  <!-- 8 bytes --> <!-- If CxlRejReason="Unknown order", specify "NONE". -->
         <field name="OrdStatus"        id="39"   type="ordStatusEnum"         semanticType="char"/>    <!-- 1 byte -->
         <field name="CxlRejResponseTo" id="434"  type="cxlRejResponseToEnum"  semanticType="char"/>    <!-- 1 byte -->
         <field name="CxlRejReason"     id="102"  type="cxlRejReasonEnum"      semanticType="int"/>     <!-- 1 byte -->

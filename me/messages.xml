@@ -83,7 +83,7 @@
 
     <sbe:message name="NewOrderSingle" id="1" blockLength="64" semanticType="D">
         <field name="ClOrdId"      id="11"   type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
-        <field name="PartyID"      id="448"  type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
+        <field name="Account"      id="1"    type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
         <field name="TransactTime" id="60"   type="UTCTimestampNanos" semanticType="UTCTimestamp"/> <!-- 8 bytes -->
         <field name="OrderQty"     id="38"   type="decimal64"         semanticType="Qty"/>          <!-- 8 bytes -->
         <field name="Price"        id="44"   type="decimal64"         semanticType="Price" presence="optional"/> <!-- 8 bytes -->
@@ -101,11 +101,12 @@
         <field name="Side"         id="54"   type="sideEnum"          semanticType="char"/>         <!-- 1 byte -->
     </sbe:message>
 
-    <sbe:message name="ExecutionReport" id="3" blockLength="114" semanticType="8">
+    <sbe:message name="ExecutionReport" id="3" blockLength="122" semanticType="8">
+        <field name="Account"      id="1"    type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
         <field name="ClOrdId"      id="11"   type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
-        <field name="PartyID"      id="448"  type="uuid"              semanticType="String"/>       <!-- 16 bytes -->
-        <field name="OrderID"      id="37"   type="uint64"            semanticType="uint64"/>       <!-- 8 bytes -->
-        <field name="ExecID"       id="17"   type="uint64"            semanticType="uint64"/>       <!-- 8 bytes -->
+        <field name="TrdMatchID"   id="880"  type="uint64"            semanticType="int" presence="optional"/> <!-- 8 bytes -->
+        <field name="OrderID"      id="37"   type="uint64"            semanticType="int"/> <!-- 8 bytes -->
+        <field name="ExecID"       id="17"   type="uint64"            semanticType="int"/> <!-- 8 bytes -->
         <field name="TransactTime" id="60"   type="UTCTimestampNanos" semanticType="UTCTimestamp"/> <!-- 8 bytes -->
         <field name="Price"        id="44"   type="decimal64"         semanticType="Price" presence="optional"/> <!-- 8 bytes -->
         <field name="LastQty"      id="32"   type="decimal64"         semanticType="Qty"   presence="optional"/> <!-- 8 bytes -->

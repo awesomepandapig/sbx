@@ -79,7 +79,7 @@ impl Order {
 
 pub fn create_order_buffer(
     cl_ord_id: &[u8; 16],
-    party_id: &[u8; 16],
+    account: &[u8; 16],
     symbol: &[u8; 6],
     side: SideEnum,
     ord_type: OrdTypeEnum,
@@ -98,7 +98,7 @@ pub fn create_order_buffer(
         .expect("Failed to retrieve parent encoder after SBE header encoding");
 
     order_encoder.cl_ord_id(cl_ord_id);
-    order_encoder.party_id(party_id);
+    order_encoder.account(account);
     order_encoder.symbol(symbol);
     order_encoder.side(side);
 

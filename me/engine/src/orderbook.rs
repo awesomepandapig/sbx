@@ -17,10 +17,9 @@ use sbe::side_enum::SideEnum;
 const MAX_ORDERS: usize = 4_000_000;
 const MAX_PRICE_LEVELS: usize = 2_000_000;
 
-pub type ClOrdIdType = [u8; 16];
-pub type PartyIdType = [u8; 16];
+pub type UuidType = [u8; 16];
 pub type SymbolType = [u8; 6];
-pub type OrderBookKey = (PartyIdType, ClOrdIdType);
+pub type OrderBookKey = (UuidType, UuidType);
 pub type OrderPool = Slab<Order>;
 pub type OrderMap = HashMap<OrderBookKey, usize>;
 pub type BidQueue = PriorityQueue<usize, BidPriority>;
@@ -105,10 +104,10 @@ pub struct Order {
     // 64 bytes total for first cache line
 
     // Cold fields (rarely accessed during matching) - subsequent cache lines
-    pub cl_ord_id: ClOrdIdType, // 16 bytes - Client Order ID
-    pub party_id: PartyIdType,  // 16 bytes - Trading Party ID
-    transact_time: u64,         // 8 bytes - Time of transaction from client
-    pub symbol: SymbolType,     // 6 bytes - Instrument symbol
+    pub cl_ord_id: UuidType, // 16 bytes - Client Order ID
+    pub account: UuidType,   // 16 bytes - Account ID
+    transact_time: u64,      // 8 bytes - Time of transaction from client
+    pub symbol: SymbolType,  // 6 bytes - Instrument symbol
 }
 
 impl Order {
@@ -118,8 +117,8 @@ impl Order {
     }
 
     #[inline(always)]
-    pub fn can_trade_with(&self, other_party_id: &PartyIdType) -> bool {
-        self.party_id != *other_party_id
+    pub fn can_trade_with(&self, other_account: &UuidType) -> bool {
+        self.account != *other_account
     }
 
     #[inline(always)]
@@ -224,6 +223,7 @@ pub struct OrderBook {
     order_map: OrderMap,
     order_id_counter: u64,
     exec_id_counter: u64,
+    match_id_counter: u64,
     publisher: ExecutionReportPublisher,
 }
 
@@ -236,6 +236,7 @@ impl OrderBook {
             order_map: OrderMap::with_capacity(MAX_ORDERS),
             order_id_counter: 0,
             exec_id_counter: 0,
+            match_id_counter: 0,
             publisher,
         }
     }
@@ -251,7 +252,7 @@ impl OrderBook {
 
         if self
             .order_map
-            .contains_key(&(order.party_id, order.cl_ord_id))
+            .contains_key(&(order.account, order.cl_ord_id))
         {
             self.publish_reject(&order, OrdRejReasonEnum::DuplicateOrder);
             return;
@@ -271,7 +272,7 @@ impl OrderBook {
 
         Order {
             cl_ord_id: order_decoder.cl_ord_id(),
-            party_id: order_decoder.party_id(),
+            account: order_decoder.account(),
             symbol: order_decoder.symbol(),
             side: order_decoder.side(),
             transact_time: order_decoder.transact_time_decoder().time(),
@@ -327,7 +328,7 @@ impl OrderBook {
 
     #[inline(always)]
     fn add_order<S: SideSpecificContext>(&mut self, order: Order) {
-        let order_key: OrderBookKey = (order.party_id, order.cl_ord_id);
+        let order_key: OrderBookKey = (order.account, order.cl_ord_id);
         let priority = S::create_priority(order.price, order.seq_num);
         let order_idx = self.order_pool.insert(order);
         self.order_map.insert(order_key, order_idx);
@@ -375,7 +376,7 @@ impl OrderBook {
                 .expect("Resting order must exist in pool for matching");
 
             // Prevent self-trade
-            if !aggressor_order.can_trade_with(&resting_order.party_id) {
+            if !aggressor_order.can_trade_with(&resting_order.account) {
                 // TODO: REJECT WIH TEXT "SELF_TRADE_PREVENTION"
                 self.publish_reject(aggressor_order, OrdRejReasonEnum::Other);
                 aggressor_order.leaves_qty = 0;
@@ -391,7 +392,7 @@ impl OrderBook {
             let resting_order_snapshot = *resting_order;
             let should_remove_resting = resting_order.is_fully_filled();
             let key = if should_remove_resting {
-                Some((resting_order.party_id, resting_order.cl_ord_id))
+                Some((resting_order.account, resting_order.cl_ord_id))
             } else {
                 None
             };
@@ -404,6 +405,7 @@ impl OrderBook {
             )
         };
 
+        self.match_id_counter += 1;
         self.publish_trade(aggressor_order, trade_qty, resting_order_price);
         self.publish_trade(&resting_order_snapshot, trade_qty, resting_order_price);
 
@@ -438,7 +440,7 @@ impl OrderBook {
     fn publish_trade(&mut self, order: &Order, qty: i64, px: i64) {
         self.exec_id_counter += 1;
         self.publisher
-            .publish_trade(order, self.exec_id_counter, qty, px);
+            .publish_trade(order, self.exec_id_counter, self.match_id_counter, qty, px);
     }
 
     #[inline(always)]
