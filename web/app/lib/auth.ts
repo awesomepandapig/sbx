@@ -1,10 +1,10 @@
 import { redirect } from "@remix-run/react";
-import { API_URL, DOMAIN } from "~/lib/config";
+import { AUTH_URL, DOMAIN } from "~/lib/config";
 import { LoaderFunctionArgs } from "@remix-run/node";
 
 export async function getSession(cookie: string | null) {
   try {
-    const response = await fetch(`${API_URL}/auth/get-session`, {
+    const response = await fetch(`${AUTH_URL}/auth/get-session`, {
       headers: {
         Cookie: cookie || "",
       },
@@ -34,7 +34,7 @@ export async function signIn(callbackURL?: string) {
   }
 
   try {
-    const response = await fetch(`${API_URL}/auth/sign-in/social`, {
+    const response = await fetch(`${AUTH_URL}/auth/sign-in/social`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -62,7 +62,7 @@ export async function signIn(callbackURL?: string) {
 
 export async function signOut() {
   try {
-    const response = await fetch(`${API_URL}/auth/sign-out`, {
+    const response = await fetch(`${AUTH_URL}/auth/sign-out`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

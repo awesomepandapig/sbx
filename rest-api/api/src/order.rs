@@ -9,7 +9,7 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
 use serde::Serialize;
 
-const MESSAGE_SIZE: usize = SBE_BLOCK_LENGTH as usize + ENCODED_LENGTH;
+pub const MESSAGE_SIZE: usize = SBE_BLOCK_LENGTH as usize + ENCODED_LENGTH;
 
 #[derive(Serialize, Debug)]
 pub struct Order {
@@ -86,7 +86,7 @@ pub fn create_order_buffer(
     timestamp_ns: u64,
     qty_mantissa: i64,
     price_mantissa: i64,
-) -> [u8; 72] {
+) -> [u8; MESSAGE_SIZE] {
     let mut buffer = [0u8; MESSAGE_SIZE];
     let write_buf = WriteBuf::new(&mut buffer[..]);
 
@@ -118,7 +118,7 @@ pub fn create_order_buffer(
 
     let mut price_encoder_composite = order_encoder.price_encoder();
     price_encoder_composite.mantissa(price_mantissa);
-    order_encoder = price_encoder_composite
+    price_encoder_composite
         .parent()
         .expect("Failed to retrieve parent encoder after price encoding");
 

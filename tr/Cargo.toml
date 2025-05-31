@@ -1,0 +1,6 @@
+[workspace]
+members = [ 
+    "core",
+    "sbe"
+]
+workspace.resolver = "3"

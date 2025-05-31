@@ -4,13 +4,11 @@ use std::sync::{Arc, Mutex};
 use std::thread::yield_now;
 
 use aeron_rs::aeron::Aeron;
-use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
 use aeron_rs::context::Context;
 use aeron_rs::publication::Publication;
-use aeron_rs::subscription::Subscription;
 use aeron_rs::utils::errors::AeronError;
 
-use log::{error, info};
+use log::{info};
 
 pub fn get_aeron_dir() -> String {
     env::var("AERON_DIR").unwrap_or_else(|_| {
@@ -52,23 +50,6 @@ pub fn create_publication(
     loop {
         if let Ok(publication) = aeron.find_publication(publication_id) {
             return publication;
-        }
-        yield_now();
-    }
-}
-
-pub fn create_subscription(
-    aeron: &mut Aeron,
-    channel: &str,
-    stream_id: i32,
-) -> Arc<Mutex<Subscription>> {
-    let subscription_id = aeron
-        .add_subscription(str_to_c(channel), stream_id)
-        .expect("Error adding subscription");
-
-    loop {
-        if let Ok(subscription) = aeron.find_subscription(subscription_id) {
-            return subscription;
         }
         yield_now();
     }

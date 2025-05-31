@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent, useRef, useEffect } from "react";
 import { signIn } from "~/lib/auth";
-import { API_URL, DOMAIN } from "~/lib/config";
+import { API_URL, API_VERSION, DOMAIN } from "~/lib/config";
 
 interface TradingInterfaceProps {
   symbol: string;
@@ -177,7 +177,7 @@ export default function TradingInterface({
       body.price = Number(limitPrice);
     }
 
-    const response = await fetch(`${API_URL}/orders/`, {
+    const response = await fetch(`${API_URL}/${API_VERSION}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

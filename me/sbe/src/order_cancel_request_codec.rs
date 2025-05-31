@@ -118,7 +118,11 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn orig_cl_ord_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            let iter = value
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(0_u8))
+                .take(16);
             self.orig_cl_ord_id_from_iter(iter);
         }
 
@@ -175,7 +179,11 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn cl_ord_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            let iter = value
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(0_u8))
+                .take(16);
             self.cl_ord_id_from_iter(iter);
         }
 
@@ -232,13 +240,19 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn party_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            let iter = value
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(0_u8))
+                .take(16);
             self.party_id_from_iter(iter);
         }
 
         /// COMPOSITE ENCODER
         #[inline]
-        pub fn transact_time_encoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
+        pub fn transact_time_encoder(
+            self,
+        ) -> utc_timestamp_nanos_codec::UTCTimestampNanosEncoder<Self> {
             let offset = self.offset + 48;
             utc_timestamp_nanos_codec::UTCTimestampNanosEncoder::default().wrap(self, offset)
         }
@@ -306,9 +320,7 @@ pub mod encoder {
             let offset = self.offset + 62;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
-
     }
-
 } // end encoder
 
 pub mod decoder {
@@ -407,7 +419,9 @@ pub mod decoder {
 
         /// COMPOSITE DECODER
         #[inline]
-        pub fn transact_time_decoder(self) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
+        pub fn transact_time_decoder(
+            self,
+        ) -> utc_timestamp_nanos_codec::UTCTimestampNanosDecoder<Self> {
             let offset = self.offset + 48;
             utc_timestamp_nanos_codec::UTCTimestampNanosDecoder::default().wrap(self, offset)
         }
@@ -423,8 +437,5 @@ pub mod decoder {
         pub fn side(&self) -> side_enum::SideEnum {
             self.get_buf().get_u8_at(self.offset + 62).into()
         }
-
     }
-
 } // end decoder
-

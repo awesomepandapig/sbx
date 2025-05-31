@@ -1,5 +1,6 @@
 import { DOCS_URL } from "~/lib/config";
-import DiscordButton from "~/components/landing/DiscordButton";
+import DiscordButton from "~/components/landing/GetStartedButton";
+import GetStartedButton from "~/components/landing/GetStartedButton";
 
 export default function Navbar() {
   return (
@@ -36,9 +37,7 @@ export default function Navbar() {
             </a>
           </nav>
         </div>
-        <button className="bg-[#3CFFFF] text-black px-6 py-2 rounded-full text-sm font-medium">
-          GET STARTED
-        </button>
+        <GetStartedButton/>
       </div>
     </header>
   );

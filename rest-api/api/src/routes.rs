@@ -2,7 +2,7 @@ use super::AppState;
 use super::errors::AppError;
 use super::order::{Order, create_order_buffer};
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use axum::{Json, extract::State, http::StatusCode};
@@ -10,6 +10,8 @@ use axum::{Json, extract::State, http::StatusCode};
 use sbe::{ord_type_enum::OrdTypeEnum, side_enum::SideEnum};
 
 use serde::Deserialize;
+
+use super::order::MESSAGE_SIZE;
 
 use uuid::Uuid;
 
@@ -136,7 +138,7 @@ pub async fn post_order(
     // TODO: VALIDATE PRICE AND QUANTITY ARE IN-BOUNDS
     // TODO: VALIDATE USER FUNDS
 
-    let account = b"AAAAAAAAAAAAAAAA"; // FOR NOW SINCE WE DON'T HAVE AUTH IMPLEMENTED WE WILL JUST USE A HARDCODED ID
+    // let account = b"AAAAAAAAAAAAAAAA"; // FOR NOW SINCE WE DON'T HAVE AUTH IMPLEMENTED WE WILL JUST USE A HARDCODED ID
 
     let parsed_input = parse_and_validate_order_payload(&payload)?;
 
@@ -157,10 +159,10 @@ pub async fn post_order(
         .publication
         .lock()
         .unwrap()
-        .offer_part(state.buffer, 0, 72 as i32);
+        .offer_part(state.buffer, 0, MESSAGE_SIZE as i32);
 
     match result {
-        Ok(code) => {}
+        Ok(_code) => {}
         Err(err) => println!("Offer with error: {}", err),
     }
 

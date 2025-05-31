@@ -118,7 +118,11 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn cl_ord_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            let iter = value
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(0_u8))
+                .take(16);
             self.cl_ord_id_from_iter(iter);
         }
 
@@ -175,7 +179,11 @@ pub mod encoder {
         /// - version: 0
         #[inline]
         pub fn orig_cl_ord_id_zero_padded(&mut self, value: &[u8]) {
-            let iter = value.iter().copied().chain(std::iter::repeat(0_u8)).take(16);
+            let iter = value
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(0_u8))
+                .take(16);
             self.orig_cl_ord_id_from_iter(iter);
         }
 
@@ -203,7 +211,10 @@ pub mod encoder {
 
         /// REQUIRED enum
         #[inline]
-        pub fn cxl_rej_response_to(&mut self, value: cxl_rej_response_to_enum::CxlRejResponseToEnum) {
+        pub fn cxl_rej_response_to(
+            &mut self,
+            value: cxl_rej_response_to_enum::CxlRejResponseToEnum,
+        ) {
             let offset = self.offset + 41;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
@@ -214,9 +225,7 @@ pub mod encoder {
             let offset = self.offset + 42;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
-
     }
-
 } // end encoder
 
 pub mod decoder {
@@ -330,8 +339,5 @@ pub mod decoder {
         pub fn cxl_rej_reason(&self) -> cxl_rej_reason_enum::CxlRejReasonEnum {
             self.get_buf().get_u8_at(self.offset + 42).into()
         }
-
     }
-
 } // end decoder
-

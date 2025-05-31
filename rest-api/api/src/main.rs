@@ -1,19 +1,14 @@
 mod aeron_handler;
-use aeron_handler::{build_context, create_publication, create_subscription, get_aeron_dir};
+use aeron_handler::{build_context, create_publication, get_aeron_dir};
 
-mod messages;
 use aeron_rs::publication::Publication;
-use aeron_rs::subscription::Subscription;
-// use messages::read_message;
 
 mod order;
-use order::create_order_buffer;
 
 mod routes;
 use routes::{get_order, post_order};
 
 mod errors;
-use errors::AppError;
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -22,15 +17,7 @@ use aeron_rs::aeron::Aeron;
 use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
 use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
 
-use sbe::ord_type_enum::OrdTypeEnum;
-use sbe::side_enum::SideEnum;
-
-use axum::{
-    Json, Router,
-    extract::State,
-    http::StatusCode,
-    routing::{get, post},
-};
+use axum::{Router, routing::get};
 
 use log::{error, info};
 
@@ -48,7 +35,7 @@ async fn main() {
     let aeron_dir = get_aeron_dir();
     info!("Aeron: Using directory: {:?}", aeron_dir);
 
-    let mut context = build_context(&aeron_dir);
+    let context = build_context(&aeron_dir);
     let mut aeron = match Aeron::new(context) {
         Ok(a) => {
             info!("Aeron: Instance created");
@@ -67,12 +54,12 @@ async fn main() {
     let aligned_buffer = AlignedBuffer::with_capacity(72);
 
     let shared_state = Arc::new(AppState {
-        publication: publication,
+        publication,
         buffer: AtomicBuffer::from_aligned(&aligned_buffer),
     });
 
     let app = Router::new().route(
-        "/api/orders",
+        "/api/v1/orders",
         get(get_order).post(post_order).with_state(shared_state),
     );
 

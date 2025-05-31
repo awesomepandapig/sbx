@@ -96,7 +96,7 @@ pub struct Order {
     pub leaves_qty: i64,       // 8 bytes - Remaining quantity to be filled
     pub price: i64,            // 8 bytes - Price for Limit orders
     pub cum_qty: i64,          // 8 bytes - Cumulative quantity filled
-    total_notional: i64,       // 8 bytes - Total value of fills
+    total_notional: i128,      // 16 bytes - Total value of fills
     pub seq_num: u64,          // 8 bytes - Monotonic identifier for order
     order_qty: i64,            // 8 bytes - Original quantity of the order
     pub side: SideEnum,        // 4 bytes - Buy or Sell
@@ -125,13 +125,13 @@ impl Order {
     pub fn fill(&mut self, qty: i64, price: i64) {
         self.cum_qty += qty;
         self.leaves_qty -= qty;
-        self.total_notional += qty * price;
+        self.total_notional += (qty as i128) * (price as i128);
     }
 
     #[inline(always)]
     pub fn avg_px(&self) -> i64 {
         if self.cum_qty > 0 {
-            self.total_notional / self.cum_qty
+            (self.total_notional / self.cum_qty as i128) as i64
         } else {
             0
         }
@@ -290,9 +290,7 @@ impl OrderBook {
     fn route_order(&mut self, order: Order) {
         match order.ord_type {
             OrdTypeEnum::Limit => self.process_limit_order(order),
-            OrdTypeEnum::Market => {
-                // TODO: Implement market order processing
-            }
+            OrdTypeEnum::Market => self.process_market_order(order),
             _ => {
                 self.publish_reject(&order, OrdRejReasonEnum::Other)
                 // TODO: Log and continue
@@ -312,17 +310,24 @@ impl OrderBook {
         }
     }
 
+    #[inline(always)]
+    fn process_market_order(&mut self, order: Order) {
+        match order.side {
+            SideEnum::Buy => self.immediate_or_cancel::<Buy>(order),
+            SideEnum::Sell => self.immediate_or_cancel::<Sell>(order),
+            _ => {
+                self.publish_reject(&order, OrdRejReasonEnum::Other);
+                // TODO: Log and continue
+            }
+        }
+    }
+
     // pub fn cancel_order(&mut self, header_decoder: MessageHeaderDecoder<ReadBuf<'_>>) {
     //     // TODO:
     //     // let order_decoder: NewOrderSingleDecoder<'_> =
     //     //     NewOrderSingleDecoder::default().header(header_decoder, 0);
     //     // let cl_ord_id: [u8; 16] = order_decoder.cl_ord_id();
     //     // let cl_ord_id_str = Uuid::from_bytes(cl_ord_id);
-    //     return;
-    // }
-
-    // pub fn process_market_order(&mut self, order: Order) {
-    //     // TODO:
     //     return;
     // }
 
@@ -333,6 +338,29 @@ impl OrderBook {
         let order_idx = self.order_pool.insert(order);
         self.order_map.insert(order_key, order_idx);
         S::push_to_queue(self, order_idx, priority);
+    }
+
+    #[inline(always)]
+    fn immediate_or_cancel<S: SideSpecificContext>(&mut self, mut aggressor_order: Order) {
+        while aggressor_order.leaves_qty > 0 {
+            match S::peek_opposite_queue(self) {
+                Some((resting_idx, resting_priority)) => {
+                    let resting_price = resting_priority.price();
+                    if !self.execute_match::<S>(
+                        &mut aggressor_order,
+                        resting_idx,
+                        resting_price,
+                    ) {
+                        break; // Self-trade detected, stop processing
+                    }
+                }
+                None => break, // No orders on opposite side
+            }
+        }
+        // any remaining portion we explicitly cancel
+        if aggressor_order.leaves_qty > 0 {
+            self.publish_cancel(&aggressor_order);
+        }
     }
 
     #[inline(always)]

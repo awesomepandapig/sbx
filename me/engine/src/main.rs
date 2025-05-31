@@ -12,6 +12,7 @@ use aeron_rs::aeron::Aeron;
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
 use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
+use aeron_rs::concurrent::strategies::{BusySpinIdleStrategy, Strategy};
 use aeron_rs::context::Context;
 use aeron_rs::utils::errors::AeronError;
 use aeron_rs::utils::types::Index;
@@ -19,6 +20,7 @@ use aeron_rs::utils::types::Index;
 use sbe::ReadBuf;
 use sbe::message_header_codec::MessageHeaderDecoder;
 
+// TODO: Move to a config file
 fn get_aeron_dir() -> String {
     match env::var("AERON_DIR") {
         Ok(path_str) => path_str,
@@ -150,16 +152,15 @@ fn main() {
     let publication_stream_id: i32 = "1002".parse().unwrap();
 
     let publication_id: i64 = aeron
-        .add_publication(str_to_c(&publication_channel), publication_stream_id)
+        .add_exclusive_publication(str_to_c(&publication_channel), publication_stream_id)
         .expect("Error adding publication");
 
     let publication = loop {
-        if let Ok(publication) = aeron.find_publication(publication_id) {
+        if let Ok(publication) = aeron.find_exclusive_publication(publication_id) {
             break publication;
         }
         std::thread::yield_now();
     };
-
     let channel_status = publication.lock().unwrap().channel_status();
 
     println!("Publication: {}", channel_status_to_str(channel_status));
@@ -168,12 +169,16 @@ fn main() {
     let publisher = ExecutionReportPublisher::new(publication);
     let mut orderbook = OrderBook::new(publisher);
 
+    let poll_idle_strategy = BusySpinIdleStrategy::default();
+
+    let mut subscription = subscription.lock().unwrap();
     loop {
-        subscription.lock().unwrap().poll(
+        let fragments_read = subscription.poll(
             &mut |buffer, offset, length, header| {
                 read_order(&mut orderbook, buffer, offset, length, header);
             },
-            10,
+            256,
         );
+        poll_idle_strategy.idle_opt(fragments_read);
     }
 }

@@ -1,11 +1,13 @@
 use super::orderbook::Order;
 
-use std::i64;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
-use aeron_rs::publication::Publication;
+use aeron_rs::concurrent::logbuffer::buffer_claim::BufferClaim;
+use aeron_rs::concurrent::strategies::BusySpinIdleStrategy;
+use aeron_rs::concurrent::strategies::Strategy;
+use aeron_rs::exclusive_publication::ExclusivePublication;
+use aeron_rs::utils::errors::AeronError;
 
 use sbe::WriteBuf;
 use sbe::exec_type_enum::ExecTypeEnum;
@@ -90,7 +92,7 @@ impl ExecutionReport {
                 let encoder = Self::set_last_px(encoder, i64::MIN);
                 let encoder = Self::set_last_qty(encoder, i64::MIN);
                 Self::set_avg_px(encoder, i64::MIN)
-            },
+            }
         }
     }
 
@@ -123,19 +125,17 @@ impl ExecutionReport {
 }
 
 pub struct ExecutionReportPublisher {
-    publication: Arc<Mutex<Publication>>, // Aeron publisher
-    atomic_buffer: AtomicBuffer,
-    sbe_buffer: Vec<u8>,
+    publication: Arc<Mutex<ExclusivePublication>>,
+    buffer_claim: BufferClaim,
+    offer_idle_strategy: BusySpinIdleStrategy,
 }
 
 impl ExecutionReportPublisher {
-    pub fn new(publication: Arc<Mutex<Publication>>) -> Self {
-        let aligned_buffer = AlignedBuffer::with_capacity(MAX_MESSAGE_SIZE as i32);
-        let atomic_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
+    pub fn new(publication: Arc<Mutex<ExclusivePublication>>) -> Self {
         Self {
             publication,
-            atomic_buffer,
-            sbe_buffer: vec![0; MAX_MESSAGE_SIZE],
+            buffer_claim: BufferClaim::default(),
+            offer_idle_strategy: BusySpinIdleStrategy::default(),
         }
     }
 
@@ -163,19 +163,66 @@ impl ExecutionReportPublisher {
 
     #[inline(always)]
     fn publish_execution_report(&mut self, report: &ExecutionReport, order: &Order, exec_id: u64) {
-        let write_buf = WriteBuf::new(&mut self.sbe_buffer);
+        self.offer_idle_strategy.reset();
+
+        loop {
+            let result = self
+                .publication
+                .lock()
+                .unwrap()
+                .try_claim(MAX_MESSAGE_SIZE as i32, &mut self.buffer_claim);
+            
+            match result {
+                Ok(_) => break,
+                Err(AeronError::BackPressured) => {
+                    self.offer_idle_strategy.idle();
+                }
+                Err(err) => {
+                    Self::handle_publication_error(err, exec_id);
+                    return;
+                }
+            }
+        }
+
+        let offset = self.buffer_claim.offset() as usize;
+        let mut buffer = self.buffer_claim.buffer();
+        let claimed_slice = &mut buffer.as_mutable_slice()[offset..offset + MAX_MESSAGE_SIZE];
+
+        let write_buf = WriteBuf::new(claimed_slice);
         let mut encoder = Self::begin_encoding(write_buf);
 
-        encoder = Self::set_common_fields(encoder, order, exec_id);
-        encoder = Self::set_composite_fields(encoder, order);
+        Self::set_common_fields(&mut encoder, order, exec_id);
+        let mut encoder = Self::set_composite_fields(encoder, order);
         encoder.exec_type(report.exec_type());
         encoder.ord_status(report.ord_status(order));
         encoder.ord_rej_reason(report.ord_rej_reason());
         report.set_optional_fields(encoder, order);
 
-        self.atomic_buffer
-            .put_bytes(0, &self.sbe_buffer[..MAX_MESSAGE_SIZE]);
-        self.send_message();
+        self.buffer_claim.commit();
+    }
+
+    fn handle_publication_error(_err: AeronError, _exec_id: u64) {
+        return;
+        // TODO: Add error traces
+        // match err {
+        //     Err(AeronError::AdminAction) => {
+        //         println!("TryClaim: AdminAction encountered, retrying...");
+        //         self.offer_idle_strategy.idle();
+        //         break;
+        //     }
+        //     Err(AeronError::NotConnected) => {
+                
+        //     }
+        //     Err(AeronError::PublicationClosed) => {
+        //         return;
+        //     }
+        //     Err(AeronError::MaxPositionExceeded) => {
+                
+        //     }
+        //     Err(other_err) => {
+                
+        //     }
+        // }
     }
 
     #[inline(always)]
@@ -189,17 +236,16 @@ impl ExecutionReportPublisher {
 
     #[inline(always)]
     fn set_common_fields<'a>(
-        mut encoder: ExecutionReportEncoder<'a>,
+        encoder: &mut ExecutionReportEncoder<'a>,
         order: &Order,
         exec_id: u64,
-    ) -> ExecutionReportEncoder<'a> {
+    ) {
         encoder.cl_ord_id(&order.cl_ord_id);
         encoder.account(&order.account);
         encoder.order_id(order.seq_num);
         encoder.exec_id(exec_id);
         encoder.symbol(&order.symbol);
         encoder.side(order.side);
-        encoder
     }
 
     #[inline(always)]
@@ -215,7 +261,7 @@ impl ExecutionReportPublisher {
         if order.ord_type == OrdTypeEnum::Limit {
             Self::set_price(encoder, order.price)
         } else {
-            encoder
+            Self::set_price(encoder, i64::MIN)
         }
     }
 
@@ -258,17 +304,5 @@ impl ExecutionReportPublisher {
         price_encoder
             .parent()
             .expect("Failed to get parent after price")
-    }
-
-    #[inline(always)]
-    fn send_message(&self) {
-        let result = self.publication.lock().unwrap().offer(self.atomic_buffer);
-
-        match result {
-            Ok(_code) => {}
-            Err(err) => {
-                eprintln!("Offer failed: {}", err);
-            }
-        }
     }
 }

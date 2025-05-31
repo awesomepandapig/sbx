@@ -257,6 +257,6 @@ fn decode_execution_report(
         exec_type: execution_report_decoder.exec_type(),
         ord_status: execution_report_decoder.ord_status(),
         ord_rej_reason: execution_report_decoder.ord_rej_reason(),
-        side: execution_report_decoder.side(),
+        side: execution_report_decoder.side()
     }
 }
