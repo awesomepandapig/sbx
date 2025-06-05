@@ -316,10 +316,15 @@ pub mod decoder {
             ReadBuf::get_bytes_at(buf.data, self.offset + 16)
         }
 
-        /// primitive field - 'REQUIRED'
+        /// primitive field - 'OPTIONAL' { null_value: '0xffffffffffffffff_u64' }
         #[inline]
-        pub fn order_id(&self) -> u64 {
-            self.get_buf().get_u64_at(self.offset + 32)
+        pub fn order_id(&self) -> Option<u64> {
+            let value = self.get_buf().get_u64_at(self.offset + 32);
+            if value == 0xffffffffffffffff_u64 {
+                None
+            } else {
+                Some(value)
+            }
         }
 
         /// REQUIRED enum

@@ -47,7 +47,7 @@ async fn main() {
         }
     };
 
-    let publication = create_publication(&mut aeron, "aeron:ipc?endpoint=localhost:40123", 1001);
+    let publication = create_publication(&mut aeron, "aeron:udp?endpoint=192.168.68.63:40123", 1001);
     let pub_status = publication.lock().unwrap().channel_status();
     info!("Aeron: Publication {}", channel_status_to_str(pub_status));
 

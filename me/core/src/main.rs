@@ -1,10 +1,15 @@
 mod config;
 mod orderbook;
 mod publisher;
+mod side;
+mod types;
 
-use config::{create_exclusive_publication, create_subscription, error_handler, get_aeron_dir, on_new_exclusive_publication_handler, on_new_subscription_handler};
+use config::{
+    create_exclusive_publication, create_subscription, error_handler, get_aeron_dir,
+    on_new_exclusive_publication_handler, on_new_subscription_handler,
+};
 use orderbook::OrderBook;
-use publisher::ExecutionReportPublisher;
+use publisher::Publisher;
 
 use std::process;
 use std::slice;
@@ -20,8 +25,8 @@ use sbe::ReadBuf;
 use sbe::message_header_codec::MessageHeaderDecoder;
 
 use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 use tracing::subscriber::set_global_default;
+use tracing_subscriber::FmtSubscriber;
 
 use tracing::{debug, error, info};
 
@@ -34,10 +39,14 @@ fn read_order(
 ) {
     debug!(target: "aeron_debug", message="Attempting to read a new aeron message");
 
-    // TODO: Safety comment (idk if this is actually safe may just be necessary for zero copy)
-    // SAFETY: lorem ipsum dolor
+    // SAFETY: This creates a slice from the Aeron buffer for zero-copy message processing.
+    // The buffer is guaranteed to be valid for the specified offset and length by Aeron.
+    // The slice lifetime is bounded by this function scope, ensuring memory safety.
     let slice_msg = unsafe {
-        slice::from_raw_parts_mut(buffer.buffer().offset(offset.try_into().expect("")), length.try_into().expect(""))
+        slice::from_raw_parts_mut(
+            buffer.buffer().offset(offset.try_into().expect("")), // TODO: NO EXPECT
+            length.try_into().expect(""),                         // TODO: NO EXPECT
+        )
     };
 
     let read_buf = ReadBuf::new(slice_msg);
@@ -48,7 +57,7 @@ fn read_order(
             order_book.process_new_order(header_decoder);
         }
         2 => {
-            // TODO: order_book.cancel_order(header_decoder);
+            order_book.process_cancel_order(header_decoder);
         }
         unknown_id => {
             error!(
@@ -68,7 +77,7 @@ fn main() -> ! {
     set_global_default(subscriber).unwrap_or_else(|err| {
         error!(target: "setup", kind="tracing_init_failed", error=?err, "Failed to create Tracing subscriber"); // TODO: Should this be a span?
         process::exit(1);
-    }); // TODO: 
+    });
 
     info!(target: "aeron_setup", "Initializing Aeron context.");
     let mut context: Context = Context::new();
@@ -95,7 +104,7 @@ fn main() -> ! {
     let publication = create_exclusive_publication(&mut aeron);
     let subscription = create_subscription(&mut aeron);
 
-    let publisher = ExecutionReportPublisher::new(publication);
+    let publisher = Publisher::new(publication);
     let mut orderbook = OrderBook::new(publisher);
 
     let poll_idle_strategy = BusySpinIdleStrategy::default();

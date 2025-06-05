@@ -1,5 +1,6 @@
-use super::orderbook::Order;
+use crate::types::{CancelRequest, Order};
 
+use std::debug_assert;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
@@ -10,16 +11,27 @@ use aeron_rs::exclusive_publication::ExclusivePublication;
 use aeron_rs::utils::errors::AeronError;
 
 use sbe::WriteBuf;
+use sbe::cxl_rej_reason_enum::CxlRejReasonEnum;
+use sbe::cxl_rej_response_to_enum::CxlRejResponseToEnum;
 use sbe::exec_type_enum::ExecTypeEnum;
 use sbe::execution_report_codec::{ExecutionReportEncoder, SBE_BLOCK_LENGTH};
 use sbe::message_header_codec::ENCODED_LENGTH;
 use sbe::ord_rej_reason_enum::OrdRejReasonEnum;
 use sbe::ord_status_enum::OrdStatusEnum;
 use sbe::ord_type_enum::OrdTypeEnum;
+use sbe::order_cancel_reject_codec::OrderCancelRejectEncoder;
 
-use tracing::{info, error};
+use tracing::error;
 
 const MAX_MESSAGE_SIZE: usize = SBE_BLOCK_LENGTH as usize + ENCODED_LENGTH;
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+const MAX_MESSAGE_SIZE_I32: i32 = {
+    assert!(
+        MAX_MESSAGE_SIZE <= i32::MAX as usize,
+        "MAX_MESSAGE_SIZE too big"
+    );
+    MAX_MESSAGE_SIZE as i32
+};
 
 #[derive(Clone, Copy)]
 pub struct Trade {
@@ -123,13 +135,13 @@ impl ExecutionReport {
     }
 }
 
-pub struct ExecutionReportPublisher {
+pub struct Publisher {
     publication: Arc<Mutex<ExclusivePublication>>,
     buffer_claim: BufferClaim,
     offer_idle_strategy: BusySpinIdleStrategy,
 }
 
-impl ExecutionReportPublisher {
+impl Publisher {
     pub fn new(publication: Arc<Mutex<ExclusivePublication>>) -> Self {
         Self {
             publication,
@@ -155,29 +167,29 @@ impl ExecutionReportPublisher {
     }
 
     #[inline(always)]
-    pub fn publish_reject(&mut self, order: &Order, exec_id: u64, reason: OrdRejReasonEnum) {
-        let reject_report = ExecutionReport::Reject(Reject { reason });
-        self.publish_execution_report(&reject_report, order, exec_id);
-    }
-
-    #[inline(always)]
-    fn publish_execution_report(&mut self, report: &ExecutionReport, order: &Order, exec_id: u64) {
-        // self.offer_idle_strategy.reset();
+    pub fn publish_cancel_reject(
+        &mut self,
+        req: &CancelRequest,
+        exec_id: u64,
+        reason: CxlRejReasonEnum,
+        response_to: CxlRejResponseToEnum,
+    ) {
+        // TODO: TURN INTO A REUSABLE METHOD TO OBTAIN A BUFFER CLAIM
+        // -----------------------------------------------------------------------------------------
+        self.offer_idle_strategy.reset(); // TODO: BACKPRESSURE STRATEGY
 
         loop {
-            assert!(i32::try_from(MAX_MESSAGE_SIZE).is_ok(), "MAX_MESSAGE_SIZE too large for i32");
-            
-            let result = self
-                .publication
-                .lock()
-                .unwrap()
-                .try_claim(MAX_MESSAGE_SIZE as i32, &mut self.buffer_claim);
+            let Ok(mut publication) = self.publication.lock() else {
+                error!("Mutex poisoned while trying to claim buffer — aborting.");
+                std::process::exit(1)
+            };
+
+            let result = publication.try_claim(MAX_MESSAGE_SIZE_I32, &mut self.buffer_claim);
 
             match result {
                 Ok(_) => break,
                 Err(AeronError::BackPressured) => {
                     self.offer_idle_strategy.idle(); // TODO: BACKPRESSURE STRATEGY
-                    info!("backpressure");
                 }
                 Err(err) => {
                     Self::handle_publication_error(err, exec_id);
@@ -186,12 +198,78 @@ impl ExecutionReportPublisher {
             }
         }
 
-        let offset = self.buffer_claim.offset() as usize;
+        let raw_offset = self.buffer_claim.offset();
+        debug_assert!(
+            raw_offset >= 0,
+            "Expected non-negative offset, got {raw_offset}"
+        );
+        #[allow(clippy::cast_sign_loss)]
+        let offset = raw_offset as usize;
+
+        let mut buffer = self.buffer_claim.buffer();
+        let claimed_slice = &mut buffer.as_mutable_slice()[offset..offset + MAX_MESSAGE_SIZE];
+        // -----------------------------------------------------------------------------------------
+
+        let write_buf = WriteBuf::new(claimed_slice);
+        let mut encoder = Self::begin_encoding_cancel_reject(write_buf);
+
+        encoder.cl_ord_id(&req.client_order_id);
+        encoder.orig_cl_ord_id(&req.original_client_order_id);
+        encoder.order_id(u64::MAX); // null
+        encoder.ord_status(OrdStatusEnum::NullVal);
+        encoder.cxl_rej_response_to(response_to);
+        encoder.cxl_rej_reason(reason);
+
+        self.buffer_claim.commit();
+    }
+
+    #[inline(always)]
+    pub fn publish_reject(&mut self, order: &Order, exec_id: u64, reason: OrdRejReasonEnum) {
+        let reject_report = ExecutionReport::Reject(Reject { reason });
+        self.publish_execution_report(&reject_report, order, exec_id);
+    }
+
+    #[inline(always)]
+    fn publish_execution_report(&mut self, report: &ExecutionReport, order: &Order, exec_id: u64) {
+        self.offer_idle_strategy.reset(); // TODO: BACKPRESSURE STRATEGY
+
+        loop {
+            assert!(
+                i32::try_from(MAX_MESSAGE_SIZE).is_ok(),
+                "MAX_MESSAGE_SIZE too large for i32"
+            );
+
+            let result = self
+                .publication
+                .lock()
+                .unwrap() // TODO: NO UNWRAP
+                .try_claim(MAX_MESSAGE_SIZE as i32, &mut self.buffer_claim);
+
+            match result {
+                Ok(_) => break,
+                Err(AeronError::BackPressured) => {
+                    self.offer_idle_strategy.idle(); // TODO: BACKPRESSURE STRATEGY
+                }
+                Err(err) => {
+                    Self::handle_publication_error(err, exec_id);
+                    return;
+                }
+            }
+        }
+
+        let raw_offset = self.buffer_claim.offset();
+        debug_assert!(
+            raw_offset >= 0,
+            "Expected non-negative offset, got {raw_offset}"
+        );
+        #[allow(clippy::cast_sign_loss)]
+        let offset = raw_offset as usize;
+
         let mut buffer = self.buffer_claim.buffer();
         let claimed_slice = &mut buffer.as_mutable_slice()[offset..offset + MAX_MESSAGE_SIZE];
 
         let write_buf = WriteBuf::new(claimed_slice);
-        let mut encoder = Self::begin_encoding(write_buf);
+        let mut encoder = Self::begin_encoding_execution_report(write_buf);
 
         Self::set_common_fields(&mut encoder, order, exec_id);
         encoder = Self::set_composite_fields(encoder, order);
@@ -203,6 +281,7 @@ impl ExecutionReportPublisher {
         self.buffer_claim.commit();
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_publication_error(err: AeronError, _exec_id: u64) {
         error!("CONDUCTOR WE HAVE A PROBLEM: {err:?}");
         // TODO: Add error traces
@@ -228,7 +307,7 @@ impl ExecutionReportPublisher {
     }
 
     #[inline(always)]
-    fn begin_encoding(write_buf: WriteBuf<'_>) -> ExecutionReportEncoder<'_> {
+    fn begin_encoding_execution_report(write_buf: WriteBuf<'_>) -> ExecutionReportEncoder<'_> {
         let encoder = ExecutionReportEncoder::default().wrap(write_buf, ENCODED_LENGTH);
         encoder
             .header(0)
@@ -237,14 +316,19 @@ impl ExecutionReportPublisher {
     }
 
     #[inline(always)]
-    fn set_common_fields(
-        encoder: &mut ExecutionReportEncoder<'_>,
-        order: &Order,
-        exec_id: u64,
-    ) {
-        encoder.cl_ord_id(&order.cl_ord_id);
+    fn begin_encoding_cancel_reject(write_buf: WriteBuf<'_>) -> OrderCancelRejectEncoder<'_> {
+        let encoder = OrderCancelRejectEncoder::default().wrap(write_buf, ENCODED_LENGTH);
+        encoder
+            .header(0)
+            .parent()
+            .expect("Failed to create encoder header") // TODO NO EXPECT
+    }
+
+    #[inline(always)]
+    fn set_common_fields(encoder: &mut ExecutionReportEncoder<'_>, order: &Order, exec_id: u64) {
+        encoder.cl_ord_id(&order.client_order_id);
         encoder.account(&order.account);
-        encoder.order_id(order.seq_num);
+        encoder.order_id(order.sequence_number);
         encoder.exec_id(exec_id);
         encoder.symbol(&order.symbol);
         encoder.side(order.side);
@@ -256,11 +340,12 @@ impl ExecutionReportPublisher {
         order: &Order,
     ) -> ExecutionReportEncoder<'a> {
         let encoder = Self::set_transact_time(encoder);
-        let encoder = Self::set_leaves_qty(encoder, order.leaves_qty);
-        let encoder = Self::set_cum_qty(encoder, order.cum_qty);
+        let encoder = Self::set_leaves_qty(encoder, order.leaves_quantity);
+        let encoder = Self::set_cum_qty(encoder, order.cumulative_quantity);
+        let encoder = Self::set_order_qty(encoder, order.quantity);
 
         // Only set price for limit orders
-        if order.ord_type == OrdTypeEnum::Limit {
+        if order.r#type == OrdTypeEnum::Limit {
             Self::set_price(encoder, order.price)
         } else {
             Self::set_price(encoder, i64::MIN)
@@ -269,7 +354,8 @@ impl ExecutionReportPublisher {
 
     #[inline(always)]
     fn set_transact_time(encoder: ExecutionReportEncoder<'_>) -> ExecutionReportEncoder<'_> {
-        // This cast is safe until year 2554. We assume the system clock is sane.
+        // This cast is safe until year 2554.
+        #[allow(clippy::cast_possible_truncation)]
         let transact_time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("System time is before Unix epoch") // TODO NO EXPECT
@@ -280,6 +366,15 @@ impl ExecutionReportPublisher {
         time_encoder
             .parent()
             .expect("Failed to get parent after transact_time") // TODO NO EXPECT
+    }
+
+    #[inline(always)]
+    fn set_order_qty(encoder: ExecutionReportEncoder<'_>, qty: i64) -> ExecutionReportEncoder<'_> {
+        let mut qty_encoder = encoder.order_qty_encoder();
+        qty_encoder.mantissa(qty);
+        qty_encoder
+            .parent()
+            .expect("Failed to get parent after order_qty") // TODO NO EXPECT
     }
 
     #[inline(always)]

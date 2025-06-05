@@ -1,6 +1,6 @@
 [workspace]
 members = [ 
-    "api",
+    "core",
     "sbe"
 ]
 workspace.resolver = "3"

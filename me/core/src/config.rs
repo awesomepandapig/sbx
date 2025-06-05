@@ -13,6 +13,7 @@ use aeron_rs::utils::errors::AeronError;
 
 use tracing::{error, info, warn};
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn error_handler(error: AeronError) {
     match &error {
         AeronError::SubscriptionNotReady(id) => {
@@ -35,6 +36,7 @@ pub fn error_handler(error: AeronError) {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
     let channel_str = channel.to_string_lossy();
     info!(
@@ -46,6 +48,7 @@ pub fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation
     );
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn on_new_exclusive_publication_handler(
     channel: CString,
     stream_id: i32,
@@ -66,7 +69,7 @@ pub fn on_new_exclusive_publication_handler(
 fn str_to_c(val: &str) -> CString {
     CString::new(val).unwrap_or_else(|e| {
         error!(input_string = %val, error = ?e, "Failed to convert string to CString. Input may contain null bytes.");
-        panic!("Critical error: Failed to convert string '{}' to CString: {:?}", val, e);
+        panic!("Critical error: Failed to convert string"); // TODO: NO PANICS
     })
 }
 
@@ -154,10 +157,7 @@ pub fn create_subscription(aeron: &mut Aeron) -> Arc<Mutex<Subscription>> {
 
     let subscription = wait_for(
         || aeron.find_subscription(subscription_id).ok(),
-        &format!(
-            "subscription (id: {}) on channel '{}'",
-            subscription_id, channel
-        ),
+        &format!("subscription (id: {subscription_id}) on channel '{channel}'"),
         Duration::from_secs(15),
     );
 
@@ -204,10 +204,7 @@ pub fn create_exclusive_publication(aeron: &mut Aeron) -> Arc<Mutex<ExclusivePub
     let publication = wait_for(
         // wait_for will exit on timeout
         || aeron.find_exclusive_publication(publication_id).ok(),
-        &format!(
-            "publication (id: {}) on channel '{}'",
-            publication_id, channel
-        ),
+        &format!("publication (id: {publication_id}) on channel '{channel}'"),
         Duration::from_secs(15),
     );
 
@@ -222,4 +219,17 @@ pub fn create_exclusive_publication(aeron: &mut Aeron) -> Arc<Mutex<ExclusivePub
     info!(target: "aeron_setup", "Aeron publication created.");
 
     publication
+}
+
+pub fn orders_count_max() -> u64 {
+    let max_order_str = env::var("orders_count_max").unwrap_or_else(|e| {
+        // TODO: ERROR HANDLER
+        error!(target: "configuration", variable = "orders_count_max", error = ?e, "Required environment variable for order book max orders not set. Exiting.");
+        process::exit(1);
+    });
+    max_order_str.parse::<u64>().unwrap_or_else(|e| {
+        // TODO: ERROR HANDLER
+        error!(target: "configuration", variable = "orders_count_max", value = %max_order_str, error = ?e, "Failed to parse orders_count_max as usize. Exiting.");
+        process::exit(1);
+    })
 }

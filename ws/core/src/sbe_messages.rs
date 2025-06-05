@@ -12,9 +12,9 @@ use sbe::{
     ord_status_enum::OrdStatusEnum, side_enum::SideEnum,
 };
 
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 pub type UuidType = [u8; 16];
 pub type SymbolType = [u8; 6];
@@ -66,7 +66,7 @@ struct ExecutionReportMessage {
     pub order_id: u64,
     pub exec_id: u64,
     pub transact_time: u64, // 8 bytes - Time of transaction from client
-    pub price: i64,     // 8 bytes - Price for Limit orders
+    pub price: i64,         // 8 bytes - Price for Limit orders
     pub last_qty: i64,
     pub last_px: i64,
     pub leaves_qty: i64, // 8 bytes - Remaining quantity to be filled
@@ -113,13 +113,13 @@ struct ExecutionReportMessageLog {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     avg_px: Option<String>,
-    
+
     symbol: String,
 
     #[serde(skip_serializing_if = "is_null_exec_type")]
     #[serde(with = "ExecTypeEnumDef")]
     exec_type: ExecTypeEnum,
-    
+
     #[serde(with = "OrdStatusEnumDef")]
     ord_status: OrdStatusEnum,
 
@@ -141,7 +141,6 @@ fn format_decimal_with_exponent_neg8(mantissa: i64) -> String {
         return integral.to_string();
     }
 
-    
     let mut fractional_str = format!("{:08}", fractional_part);
     while fractional_str.ends_with('0') {
         fractional_str.pop();
@@ -162,7 +161,7 @@ fn nanos_to_iso8601(nanos_since_epoch: i64) -> String {
 
 impl ExecutionReportMessageLog {
     fn from(msg: ExecutionReportMessage) -> Self {
-        const DECIMAL_NULL_VAL: i64 = i64::MIN; 
+        const DECIMAL_NULL_VAL: i64 = i64::MIN;
 
         let price = if msg.price != DECIMAL_NULL_VAL {
             Some(format_decimal_with_exponent_neg8(msg.price))
@@ -201,8 +200,10 @@ impl ExecutionReportMessageLog {
             leaves_qty: format_decimal_with_exponent_neg8(msg.leaves_qty),
             cum_qty: format_decimal_with_exponent_neg8(msg.cum_qty),
             avg_px,
-            symbol: String::from_utf8_lossy(&msg.symbol).trim_end_matches('\0').to_string(),
-            exec_type: msg.exec_type, 
+            symbol: String::from_utf8_lossy(&msg.symbol)
+                .trim_end_matches('\0')
+                .to_string(),
+            exec_type: msg.exec_type,
             ord_status: msg.ord_status,
             ord_rej_reason: msg.ord_rej_reason,
             side: msg.side,
@@ -210,7 +211,12 @@ impl ExecutionReportMessageLog {
     }
 }
 
-pub fn read_message(buffer: &AtomicBuffer, offset: Index, length: Index, _header: &Header) {
+pub fn read_message(
+    buffer: &AtomicBuffer,
+    offset: Index,
+    length: Index,
+    _header: &Header,
+) -> Option<String> {
     let slice_msg = unsafe {
         slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize)
     };
@@ -223,14 +229,10 @@ pub fn read_message(buffer: &AtomicBuffer, offset: Index, length: Index, _header
             let execution_msg = decode_execution_report(header_decoder);
 
             let log_view = ExecutionReportMessageLog::from(execution_msg);
-            match serde_json::to_string(&log_view) {
-                Ok(json) => println!("{}", json),
-                Err(e) => eprintln!("Failed to serialize ExecutionReportMessage: {}", e),
-            }
-
+            serde_json::to_string(&log_view).ok()
         }
-        4 => {}
-        _ => {}
+        4 => None,
+        _ => None,
     }
 }
 
@@ -257,6 +259,6 @@ fn decode_execution_report(
         exec_type: execution_report_decoder.exec_type(),
         ord_status: execution_report_decoder.ord_status(),
         ord_rej_reason: execution_report_decoder.ord_rej_reason(),
-        side: execution_report_decoder.side()
+        side: execution_report_decoder.side(),
     }
 }

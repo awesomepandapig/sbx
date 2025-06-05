@@ -8,7 +8,7 @@ use aeron_rs::context::Context;
 use aeron_rs::subscription::Subscription;
 use aeron_rs::utils::errors::AeronError;
 
-use log::{error, info};
+use log::{info};
 
 pub fn get_aeron_dir() -> String {
     env::var("AERON_DIR").unwrap_or_else(|_| {
