@@ -2,7 +2,7 @@ use crate::types::{CancelRequest, Order};
 
 use std::debug_assert;
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use aeron_rs::concurrent::logbuffer::buffer_claim::BufferClaim;
 use aeron_rs::concurrent::strategies::BusySpinIdleStrategy;
@@ -189,7 +189,8 @@ impl Publisher {
             match result {
                 Ok(_) => break,
                 Err(AeronError::BackPressured) => {
-                    self.offer_idle_strategy.idle(); // TODO: BACKPRESSURE STRATEGY
+                    // self.offer_idle_strategy.idle(); // TODO: BACKPRESSURE STRATEGY
+                    std::thread::sleep(Duration::from_micros(40));
                 }
                 Err(err) => {
                     Self::handle_publication_error(err, exec_id);
@@ -282,8 +283,8 @@ impl Publisher {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn handle_publication_error(err: AeronError, _exec_id: u64) {
-        error!("CONDUCTOR WE HAVE A PROBLEM: {err:?}");
+    fn handle_publication_error(_err: AeronError, _exec_id: u64) {
+        // println!("CONDUCTOR WE HAVE A PROBLEM: {err:?}");
         // TODO: Add error traces
         // match err {
         //     Err(AeronError::AdminAction) => {

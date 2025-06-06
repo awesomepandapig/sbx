@@ -28,7 +28,7 @@ use tracing::Level;
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;
 
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 fn read_order(
     order_book: &mut OrderBook,
@@ -37,8 +37,6 @@ fn read_order(
     length: Index,
     _header: &Header,
 ) {
-    debug!(target: "aeron_debug", message="Attempting to read a new aeron message");
-
     // SAFETY: This creates a slice from the Aeron buffer for zero-copy message processing.
     // The buffer is guaranteed to be valid for the specified offset and length by Aeron.
     // The slice lifetime is bounded by this function scope, ensuring memory safety.

@@ -16,7 +16,6 @@ pub struct BidPriority {
 }
 
 impl Ord for BidPriority {
-    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         self.price
             .cmp(&other.price)
@@ -25,7 +24,6 @@ impl Ord for BidPriority {
 }
 
 impl PartialOrd for BidPriority {
-    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -38,7 +36,6 @@ pub struct AskPriority {
 }
 
 impl Ord for AskPriority {
-    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         // Price priority first (lower is better for asks), then time priority (earlier is better)
         other
@@ -49,7 +46,6 @@ impl Ord for AskPriority {
 }
 
 impl PartialOrd for AskPriority {
-    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -76,19 +72,16 @@ pub struct Order {
 }
 
 impl Order {
-    #[inline(always)]
     pub fn is_fully_filled(&self) -> bool {
         self.leaves_quantity == 0
     }
 
-    #[inline(always)]
     pub fn fill(&mut self, qty: i64, price: i64) {
         self.cumulative_quantity += qty;
         self.leaves_quantity -= qty;
         self.total_notional += i128::from(qty) * i128::from(price);
     }
 
-    #[inline(always)]
     pub fn avg_px(&self) -> i64 {
         if self.cumulative_quantity == 0 {
             return 0;
