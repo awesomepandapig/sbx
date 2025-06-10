@@ -1,4 +1,5 @@
-use crate::types::{CancelRequest, Order};
+use crate::orderbook::Order;
+use crate::types::CancelRequest;
 
 use std::debug_assert;
 use std::sync::{Arc, Mutex};
@@ -69,7 +70,7 @@ impl ExecutionReport {
         match self {
             ExecutionReport::New => OrdStatusEnum::New,
             ExecutionReport::Trade(_) => {
-                if order.is_fully_filled() {
+                if order.leaves_quantity == 0 {
                     OrdStatusEnum::Filled
                 } else {
                     OrdStatusEnum::PartiallyFilled
@@ -214,8 +215,23 @@ impl Publisher {
         let write_buf = WriteBuf::new(claimed_slice);
         let mut encoder = Self::begin_encoding_cancel_reject(write_buf);
 
-        encoder.cl_ord_id(&req.client_order_id);
-        encoder.orig_cl_ord_id(&req.original_client_order_id);
+        let client_order_id = {
+            let id = req.client_order_id;
+            [
+                (id >> 64) as u64,                   // high bits
+                (id & 0xFFFF_FFFF_FFFF_FFFF) as u64, // low bits
+            ]
+        };
+        let original_client_order_id = {
+            let id = req.original_client_order_id;
+            [
+                (id >> 64) as u64,                   // high bits
+                (id & 0xFFFF_FFFF_FFFF_FFFF) as u64, // low bits
+            ]
+        };
+
+        encoder.cl_ord_id(&client_order_id);
+        encoder.orig_cl_ord_id(&original_client_order_id);
         encoder.order_id(u64::MAX); // null
         encoder.ord_status(OrdStatusEnum::NullVal);
         encoder.cxl_rej_response_to(response_to);
@@ -327,8 +343,23 @@ impl Publisher {
 
     #[inline(always)]
     fn set_common_fields(encoder: &mut ExecutionReportEncoder<'_>, order: &Order, exec_id: u64) {
-        encoder.cl_ord_id(&order.client_order_id);
-        encoder.account(&order.account);
+        let client_order_id = {
+            let id = order.client_order_id;
+            [
+                (id >> 64) as u64,                   // high bits
+                (id & 0xFFFF_FFFF_FFFF_FFFF) as u64, // low bits
+            ]
+        };
+        let account = {
+            let id = order.account;
+            [
+                (id >> 64) as u64,                   // high bits
+                (id & 0xFFFF_FFFF_FFFF_FFFF) as u64, // low bits
+            ]
+        };
+
+        encoder.cl_ord_id(&client_order_id);
+        encoder.account(&account);
         encoder.order_id(order.sequence_number);
         encoder.exec_id(exec_id);
         encoder.symbol(&order.symbol);

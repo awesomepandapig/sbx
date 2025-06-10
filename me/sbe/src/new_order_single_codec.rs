@@ -66,124 +66,126 @@ pub mod encoder {
         }
 
         #[inline]
-        pub fn cl_ord_id_at(&mut self, index: usize, value: u8) {
+        pub fn cl_ord_id_at(&mut self, index: usize, value: u64) {
             let offset = self.offset;
             let buf = self.get_buf_mut();
-            buf.put_u8_at(offset + index, value);
+            buf.put_u64_at(offset + index * 8, value);
         }
 
         /// primitive array field 'ClOrdId'
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 0
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn cl_ord_id(&mut self, value: &[u8]) {
-            debug_assert_eq!(16, value.len());
+        pub fn cl_ord_id(&mut self, value: &[u64]) {
+            debug_assert_eq!(2, value.len());
             let offset = self.offset;
             let buf = self.get_buf_mut();
-            buf.put_slice_at(offset, value);
+            buf.put_u64_at(offset, value[0]);
+            buf.put_u64_at(offset + 8, value[1]);
         }
 
         /// primitive array field 'ClOrdId' from an Iterator
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 0
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn cl_ord_id_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
+        pub fn cl_ord_id_from_iter(&mut self, iter: impl Iterator<Item = u64>) {
             let offset = self.offset;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
-                buf.put_u8_at(offset + i, v);
+                buf.put_u64_at(offset + i * 8, v);
             }
         }
 
         /// primitive array field 'ClOrdId' with zero padding
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 0
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn cl_ord_id_zero_padded(&mut self, value: &[u8]) {
+        pub fn cl_ord_id_zero_padded(&mut self, value: &[u64]) {
             let iter = value
                 .iter()
                 .copied()
-                .chain(std::iter::repeat(0_u8))
-                .take(16);
+                .chain(std::iter::repeat(0_u64))
+                .take(2);
             self.cl_ord_id_from_iter(iter);
         }
 
         #[inline]
-        pub fn account_at(&mut self, index: usize, value: u8) {
+        pub fn account_at(&mut self, index: usize, value: u64) {
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
-            buf.put_u8_at(offset + index, value);
+            buf.put_u64_at(offset + index * 8, value);
         }
 
         /// primitive array field 'Account'
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn account(&mut self, value: &[u8]) {
-            debug_assert_eq!(16, value.len());
+        pub fn account(&mut self, value: &[u64]) {
+            debug_assert_eq!(2, value.len());
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
-            buf.put_slice_at(offset, value);
+            buf.put_u64_at(offset, value[0]);
+            buf.put_u64_at(offset + 8, value[1]);
         }
 
         /// primitive array field 'Account' from an Iterator
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn account_from_iter(&mut self, iter: impl Iterator<Item = u8>) {
+        pub fn account_from_iter(&mut self, iter: impl Iterator<Item = u64>) {
             let offset = self.offset + 16;
             let buf = self.get_buf_mut();
             for (i, v) in iter.enumerate() {
-                buf.put_u8_at(offset + i, v);
+                buf.put_u64_at(offset + i * 8, v);
             }
         }
 
         /// primitive array field 'Account' with zero padding
         /// - min value: 0
-        /// - max value: 254
-        /// - null value: 0xff_u8
+        /// - max value: -2
+        /// - null value: 0xffffffffffffffff_u64
         /// - characterEncoding: null
         /// - semanticType: String
         /// - encodedOffset: 16
         /// - encodedLength: 16
         /// - version: 0
         #[inline]
-        pub fn account_zero_padded(&mut self, value: &[u8]) {
+        pub fn account_zero_padded(&mut self, value: &[u64]) {
             let iter = value
                 .iter()
                 .copied()
-                .chain(std::iter::repeat(0_u8))
-                .take(16);
+                .chain(std::iter::repeat(0_u64))
+                .take(2);
             self.account_from_iter(iter);
         }
 
@@ -360,15 +362,18 @@ pub mod decoder {
         }
 
         #[inline]
-        pub fn cl_ord_id(&self) -> [u8; 16] {
+        pub fn cl_ord_id(&self) -> [u64; 2] {
             let buf = self.get_buf();
-            ReadBuf::get_bytes_at(buf.data, self.offset)
+            [buf.get_u64_at(self.offset), buf.get_u64_at(self.offset + 8)]
         }
 
         #[inline]
-        pub fn account(&self) -> [u8; 16] {
+        pub fn account(&self) -> [u64; 2] {
             let buf = self.get_buf();
-            ReadBuf::get_bytes_at(buf.data, self.offset + 16)
+            [
+                buf.get_u64_at(self.offset + 16),
+                buf.get_u64_at(self.offset + 16 + 8),
+            ]
         }
 
         /// COMPOSITE DECODER

@@ -221,7 +221,7 @@ pub fn create_exclusive_publication(aeron: &mut Aeron) -> Arc<Mutex<ExclusivePub
     publication
 }
 
-pub fn orders_count_max() -> u64 {
+pub fn order_count_max() -> u64 {
     let max_order_str = env::var("MAX_ORDERS").unwrap_or_else(|e| {
         // TODO: ERROR HANDLER
         error!(target: "configuration", variable = "orders_count_max", error = ?e, "Required environment variable for order book max orders not set. Exiting.");

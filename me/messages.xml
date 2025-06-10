@@ -11,7 +11,7 @@
     <types>
         <type name="enumEncoding" primitiveType="char"/>
         <type name="string6"      primitiveType="char" length="6" characterEncoding="ISO_8859_1"/>
-        <type name="uuid"         primitiveType="uint8" length="16"/>
+        <type name="uuid"         primitiveType="uint64" length="2"/>
 
         <composite name="messageHeader"> <!-- 8 bytes -->
             <type name="blockLength" primitiveType="uint16"/>
