@@ -1,57 +1,9 @@
-use crate::config::order_count_max;
+use crate::types::{Order, OrderKey};
 
 use slab::Slab;
 use std::collections::{BTreeSet, HashMap};
 
-use sbe::ord_type_enum::OrdTypeEnum;
 use sbe::side_enum::SideEnum;
-
-pub type UuidType = u128;
-pub type SymbolType = [u8; 6];
-pub type OrderKey = (UuidType, UuidType);
-
-#[derive(Debug, Clone, Copy)]
-pub struct Order {
-    // Hot fields (accessed frequently during matching) - first cache line (64 bytes)
-    pub prev_order_idx: Option<usize>,
-    pub next_order_idx: Option<usize>,
-
-    pub leaves_quantity: i64, // 8 bytes - Remaining quantity to be filled
-    pub price: i64,           // 8 bytes - Price for Limit orders
-    pub cumulative_quantity: i64, // 8 bytes - Cumulative quantity filled
-    pub total_notional: i128, // 16 bytes - Total value of fills
-    pub sequence_number: u64, // 8 bytes - Monotonic identifier for order
-    pub quantity: i64,        // 8 bytes - Original quantity of the order
-    pub side: SideEnum,       // 1 bytes - Buy or Sell
-    pub r#type: OrdTypeEnum,  // 1 bytes - Limit or Market
-    // 64 bytes total for first cache line
-
-    // Cold fields (rarely accessed during matching) - subsequent cache lines
-    pub client_order_id: UuidType, // 16 bytes - Client Order ID
-    pub account: UuidType,         // 16 bytes - Account ID
-    // pub transact_time: u64,        // 8 bytes - Time of transaction from client
-    pub symbol: SymbolType, // 6 bytes - Instrument symbol
-}
-
-impl Order {
-    pub fn key(&self) -> OrderKey {
-        (self.account, self.client_order_id)
-    }
-
-    pub fn fill(&mut self, qty: i64, price: i64) {
-        self.cumulative_quantity += qty;
-        self.leaves_quantity -= qty;
-        self.total_notional += i128::from(qty) * i128::from(price);
-    }
-
-    pub fn avg_px(&self) -> i64 {
-        if self.cumulative_quantity == 0 {
-            return 0;
-        }
-        let avg = self.total_notional / i128::from(self.cumulative_quantity);
-        i64::try_from(avg).expect("avg_px: VWAP out of i64 range — invariant broken") // TODO: NO EXPECTS
-    }
-}
 
 struct Limit {
     head_order_idx: Option<usize>,
@@ -77,27 +29,26 @@ pub struct OrderBook {
 }
 
 impl OrderBook {
-    pub fn new() -> Self {
-        let order_count_max = order_count_max() as usize;
-
+    pub fn new(capacity: usize) -> Self {
         Self {
-            pool: Slab::with_capacity(order_count_max),
+            pool: Slab::with_capacity(capacity),
             order_key_map: HashMap::new(),
             bids_price_tree: BTreeSet::new(),
             asks_price_tree: BTreeSet::new(),
-            bids_price_map: HashMap::with_capacity(order_count_max / 2),
-            asks_price_map: HashMap::with_capacity(order_count_max / 2),
+            bids_price_map: HashMap::with_capacity(capacity / 10),
+            asks_price_map: HashMap::with_capacity(capacity / 10),
         }
     }
 
-    /// Adds a new buy order to the book.
-    pub fn add_bid(&mut self, order: Order) {
-        let order_key = order.key();
-        if self.order_key_map.contains_key(&order_key) {
-            panic!("Cannot add order: duplicate client_order_id"); // TODO: NO PANIC
-        }
+    pub fn is_full(&self) -> bool {
+        self.pool.len() >= self.pool.capacity()
+    }
 
-        let order_idx = self.pool.insert(order);
+    /// Adds a new buy order to the book.
+    pub fn add_bid(&mut self, order: &Order) {
+        let order_key = order.key();
+
+        let order_idx = self.pool.insert(*order);
         self.order_key_map.insert(order_key, order_idx);
 
         if let Some(limit) = self.bids_price_map.get_mut(&order.price) {
@@ -117,13 +68,9 @@ impl OrderBook {
     }
 
     /// Adds a new sell order to the book.
-    pub fn add_ask(&mut self, order: Order) {
+    pub fn add_ask(&mut self, order: &Order) {
         let order_key = order.key();
-        if self.order_key_map.contains_key(&order_key) {
-            panic!("Cannot add order: duplicate client_order_id"); // TODO: NO PANIC
-        }
-
-        let order_idx = self.pool.insert(order);
+        let order_idx = self.pool.insert(*order);
         self.order_key_map.insert(order_key, order_idx);
 
         if let Some(limit) = self.asks_price_map.get_mut(&order.price) {
@@ -170,23 +117,23 @@ impl OrderBook {
                 self.pool[prev].next_order_idx = Some(next);
                 self.pool[next].prev_order_idx = Some(prev);
             }
-            (Some(prev), None) => {
+            (Some(prev), _) => {
                 // Tail of the list
                 self.pool[prev].next_order_idx = None;
                 limit.tail_order_idx = Some(prev);
             }
-            (None, Some(next)) => {
+            (_, Some(next)) => {
                 // Head of the list
                 self.pool[next].prev_order_idx = None;
                 limit.head_order_idx = Some(next);
             }
-            (None, None) => {
+            (_, _) => {
                 // Only order at this price level
                 // This is the O(log N) path.
                 price_map.remove(&order.price);
                 tree.remove(&order.price);
             }
-        };
+        }
 
         order
     }
@@ -213,7 +160,7 @@ impl OrderBook {
     /// This allows for in-place modification of the order.
     /// # Time Complexity: O(log N)
     pub fn best_ask(&mut self) -> Option<&mut Order> {
-        if let Some(&best_price) = self.asks_price_tree.last() {
+        if let Some(&best_price) = self.asks_price_tree.first() {
             let head_idx = self
                 .asks_price_map
                 .get(&best_price)

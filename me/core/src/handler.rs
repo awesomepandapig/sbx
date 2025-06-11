@@ -1,7 +1,8 @@
-use crate::orderbook::{Order, OrderBook};
+use crate::config::order_count_max;
+use crate::orderbook::OrderBook;
 use crate::publisher::Publisher;
 use crate::side::{Buy, Sell, SideSpecificContext};
-use crate::types::CancelRequest;
+use crate::types::{CancelRequest, Order};
 
 use std::cmp::min;
 
@@ -15,7 +16,7 @@ use sbe::ord_type_enum::OrdTypeEnum;
 use sbe::order_cancel_request_codec::OrderCancelRequestDecoder;
 use sbe::side_enum::SideEnum;
 
-use tracing::{info, error};
+use tracing::error;
 
 macro_rules! execute_trade {
     ($self:expr, $aggressor_order:expr, $resting_order:expr) => {{
@@ -59,8 +60,13 @@ pub struct Handler {
 
 impl Handler {
     pub fn new(publisher: Publisher) -> Self {
+        let order_count_max = match usize::try_from(order_count_max()) {
+            Ok(usize) => usize,
+            Err(error) => panic!("Problem opening the file: {error:?}"), // TODO: NO PANIC
+        };
+
         Self {
-            book: OrderBook::new(),
+            book: OrderBook::new(order_count_max),
             counter_order_id: 0,
             counter_exec_id: 0,
             counter_match_id: 0,
@@ -72,18 +78,15 @@ impl Handler {
     pub fn process_new_order(&mut self, header_decoder: MessageHeaderDecoder<ReadBuf<'_>>) {
         let mut order = self.process_new_order_decode(header_decoder);
 
-        // TODO: REIMPLEMENT BOUNDARIES
-        // if self.order_pool.is_full() {
-        //     self.publish_reject(&order, OrdRejReasonEnum::Other);
-        //     // TODO: ERROR HANDLER
-        //     warn!(
-        //         target: "matching_engine_capacity",
-        //         reason = "Book capacity limit reached",
-        //         "OPERATIONAL WARNING: Order book capacity limit reached. New orders are being rejected. Consider investigating load or if orders_count_max (={}) needs adjustment.",
-        //         self.orders_count_max
-        //     );
-        //     return;
-        // }
+        if self.book.is_full() {
+            self.publish_reject(&order, OrdRejReasonEnum::Other);
+            error!(
+                target: "matching_engine_capacity",
+                reason = "Book capacity limit reached",
+                "OPERATIONAL WARNING: Order book capacity limit reached. New orders are being rejected. Consider investigating load or if orders_count_max needs adjustment.",
+            ); // TODO: ERROR HANDLER
+            return;
+        }
 
         if self
             .book
@@ -178,7 +181,7 @@ impl Handler {
             },
             // transact_time: decoder.transact_time_decoder().time(),
             // symbol: decoder.symbol(),
-            side: decoder.side(),
+            // side: decoder.side(),
         }
     }
 
@@ -215,26 +218,50 @@ impl Handler {
     #[inline(always)]
     fn handle_limit_order<S: SideSpecificContext>(&mut self, aggressor_order: &mut Order) {
         while aggressor_order.leaves_quantity > 0 {
-            let Some(resting_order) = S::get_best_opposite(&mut self.book) else {
+            // Get the best price level
+            let Some(mut resting_order) = S::get_best_opposite(&mut self.book) else {
                 break; // No orders on opposite side
             };
 
-            // Check prices cross
+            // Check if prices can cross at this level
             if !S::can_cross(aggressor_order.price, resting_order.price) {
                 break;
             }
 
-            // Check for self-trading
-            if aggressor_order.account == resting_order.account {
-                self.publish_cancel(aggressor_order); // TODO: publish cancel with STP as reason
-                return;
-            }
+            // Process all orders at this price level
+            loop {
+                // Check for self-trading
+                if aggressor_order.account == resting_order.account {
+                    self.publish_cancel(aggressor_order); // TODO: publish cancel with STP as reason
+                    return;
+                }
 
-            execute_trade!(self, aggressor_order, resting_order);
+                execute_trade!(self, aggressor_order, resting_order);
 
-            if resting_order.leaves_quantity == 0 {
-                let resting_key = (resting_order.account, resting_order.client_order_id);
-                self.book.remove(resting_key);
+                // Check if aggressor is fully filled
+                if aggressor_order.leaves_quantity == 0 {
+                    // If resting order is also fully filled, remove it
+                    if resting_order.leaves_quantity == 0 {
+                        let resting_key = (resting_order.account, resting_order.client_order_id);
+                        self.book.remove(resting_key);
+                    }
+                    return; // Aggressor is done
+                }
+
+                if resting_order.leaves_quantity == 0 {
+                    let resting_key = (resting_order.account, resting_order.client_order_id);
+                    let next_order_idx = resting_order.next_order_idx;
+                    self.book.remove(resting_key);
+
+                    if let Some(next_idx) = next_order_idx {
+                        resting_order = self.book.pool.get_mut(next_idx).expect(
+                            "Data consistency error: next_order_idx points to invalid order",
+                        ); // TODO: Handle error
+                    } else {
+                        // No more orders at this price level, break to get next price level
+                        break;
+                    }
+                }
             }
         }
 
@@ -247,23 +274,47 @@ impl Handler {
     #[inline(always)]
     fn handle_market_order<S: SideSpecificContext>(&mut self, aggressor_order: &mut Order) {
         while aggressor_order.leaves_quantity > 0 {
-            let Some(resting_order) = S::get_best_opposite(&mut self.book) else {
+            // Get the best price level
+            let Some(mut resting_order) = S::get_best_opposite(&mut self.book) else {
                 // No orders on opposite side
                 self.publish_cancel(aggressor_order);
                 return;
             };
 
-            // Check for self-trading
-            if aggressor_order.account == resting_order.account {
-                self.publish_cancel(aggressor_order); // TODO: publish cancel with STP as reason
-                return;
-            }
+            // Process all orders at this price level
+            loop {
+                // Check for self-trading
+                if aggressor_order.account == resting_order.account {
+                    self.publish_cancel(aggressor_order); // TODO: publish cancel with STP as reason
+                    return;
+                }
 
-            execute_trade!(self, aggressor_order, resting_order);
+                execute_trade!(self, aggressor_order, resting_order);
 
-            if resting_order.leaves_quantity == 0 {
-                let resting_key = (resting_order.account, resting_order.client_order_id);
-                self.book.remove(resting_key);
+                // Check if aggressor is fully filled
+                if aggressor_order.leaves_quantity == 0 {
+                    // If resting order is also fully filled, remove it
+                    if resting_order.leaves_quantity == 0 {
+                        let resting_key = (resting_order.account, resting_order.client_order_id);
+                        self.book.remove(resting_key);
+                    }
+                    return; // Aggressor is done
+                }
+
+                if resting_order.leaves_quantity == 0 {
+                    let resting_key = (resting_order.account, resting_order.client_order_id);
+                    let next_order_idx = resting_order.next_order_idx;
+                    self.book.remove(resting_key);
+
+                    if let Some(next_idx) = next_order_idx {
+                        resting_order = self.book.pool.get_mut(next_idx).expect(
+                            "Data consistency error: next_order_idx points to invalid order",
+                        ); // TODO: Handle error
+                    } else {
+                        // No more orders at this price level, break to get next price level
+                        break;
+                    }
+                }
             }
         }
     }

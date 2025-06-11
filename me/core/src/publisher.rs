@@ -1,5 +1,5 @@
-use crate::orderbook::Order;
 use crate::types::CancelRequest;
+use crate::types::Order;
 
 use std::debug_assert;
 use std::sync::{Arc, Mutex};

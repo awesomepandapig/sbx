@@ -1,53 +1,45 @@
 # SBX - SkyBlock Exchange
 
-<p align="center">
-  <img width="1507" src="https://github.com/user-attachments/assets/2cab6199-5f6e-4a54-af00-5906d71e0af8" />
+SBX is a high-performance trading platform engineered specifically for Hypixel SkyBlock. It is built on modern exchange design principles, featuring horizontally scalable microservices that communicate over [Aeron](https://github.com/aeron-io/aeron), a high-throughput, low-latency messaging system.
+
+<div align="center">
+    
+<img width="1507" src="https://github.com/user-attachments/assets/2cab6199-5f6e-4a54-af00-5906d71e0af8" />
 </p>
-<p align="center">
-  A real-time, low-latency exchange built for Hypixel SkyBlock
-</p>
 
-## Overview
+</div>
+ 
+Check out our [Github Project](https://github.com/users/awesomepandapig/projects/6) to see current progress.
 
-SBX is a high-performance trading platform designed specifically for Hypixel SkyBlock. The system architecture follows modern exchange design principles with horizontally scalable microservices communicating through Redis Streams (for event sourcing) and Pub/Sub (for low-latency broadcasting).
+## Architecture
 
-| Component        | Folder          | Language   | Description                                                                                                              |
-| ---------------- | --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Matching Engine  | [`/me`](./me)   | Rust   | High-performance in-memory matching engine; processes thousands of orders per second with sub-millisecond latency. Emits trade events and writes to Redis Streams for durability          |
-| Market Data Feed | [`/md`](./md)   | Rust   | Consumes trade events and maintains an up-to-date market state (tickers, order book snapshots) for broadcasting to clients |
-| REST API         | [`/api`](./api) | TypeScript | Stateless HTTP layer for order lifecycle management and account operations                                                         |
-| WebSocket Server | [`/ws`](./ws)   | TypeScript | Pushes real-time updates (orders, trades, tickers) to clients using efficient subscription-based routing                       |
-| Client Interface | [`/web`](./web) | TypeScript | React + Remix frontend featuring intuitive trading interfaces, market visualization, and account management                                           |
-
-## Technologies & Design Principles
-
-| Layer               | Tech Stack                 | Notes                                                               |
+| Component           | Tech Stack                 | Description                                                               |
 | ------------------- | -------------------------- | ------------------------------------------------------------------- |
-| **Matching Engine** | Rust                       | Zero-GC, predictable performance with minimal latency jitter |
-| **Market Data**     | Rust                       | Push-based event handling, consistent state derivation from streams |
-| **Data Transport**  | Redis Streams + Pub/Sub    | Durable event bus for service decoupling, reliable delivery, and fan-out operations        |
-| **Persistence**     | TimescaleDB + Drizzle ORM  | Time-series storage for candles; relational storage for account and order data   |
-| **API Layer**       | Node.js + TypeScript + Zod | Type-safe API design with comprehensive request validation |
-| **Frontend**        | Remix + TailwindCSS + Vite | Server-side rendering for optimal performance |
+| **Matching Engine** | Rust                       | Zero-GC, in-memory matching engine designed for predictable performance with minimal latency jitter, capable of processing millions of orders per second. |
+| **Data Transport**  | Aeron                      | High-performance, low-latency messaging for service decoupling and reliable event streaming.        |
+| **Persistence**     | QuestDB + Postgres         | Time-series storage for candles & tickers; relational storage for account and order data.   |
+| **REST Gateway**    | Rust + Axum                | Type-safe API design with comprehensive request validation. Enables order lifecycle management and account operations. |
+| **WebSocket**       | Rust + Tungstenite         | Market data feed pushes real-time updates (orders, trades, tickers) to clients via selective, channel-based routing. |
+| **Frontend**        | TypeScript + Remix + TailwindCSS + Vite | Intuitive trading interfaces, market visualization, and account management features |
 
 
 ## Engineering Highlights
 
 * **In-Memory Order Matching**
   
-  Built in Rust for speed and predictability, the matching engine processes and matches thousands of orders/sec with sub-millisecond latency, implementing a price-time priority model for fair execution.
+  Built in Rust for maximum safety, the matching engine is capable of processing `4.15 million` messages per second (benchmarked on a 2024 M4 Mac Mini). It implements a price-time priority model to ensure fair and efficient order execution.
 
 * **Event-Sourced Architecture**
   
-  Trade and order lifecycle events are stored in Redis Streams, enabling complete auditability, system recovery, and decoupled state reconstruction across services.
+  Trade and order lifecycle events are streamed via Aeron, creating a durable and auditable log. This enables complete system recovery and allows for decoupled state reconstruction across all microservices.
 
 * **Scalable Market Data Distribution**
   
-  Market state is derived from the event stream and efficiently broadcast via WebSockets with channel-based subscription management, ensuring clients receive only relevant updates.
+  Market state is derived from the multicast Aeron stream and efficiently broadcast via WebSockets. Channel-based subscription management ensures that clients receive only the updates that are relevant to them, minimizing network overhead.
 
 * **Fault Isolation**
-  
-  Services are independently deployable and restartable, allowing horizontal scale-out and minimal blast radius in case of failure. The system maintains partial functionality even when individual components are down.
+
+  Each service is independently deployable and restartable, allowing for horizontal scaling and minimizing the impact of any single component failure. The system is designed to maintain partial functionality even if individual services go down.
 
 ## License
 

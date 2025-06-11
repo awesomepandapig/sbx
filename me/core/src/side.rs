@@ -1,4 +1,5 @@
-use crate::orderbook::{Order, OrderBook};
+use crate::orderbook::OrderBook;
+use crate::types::Order;
 
 pub struct Buy;
 pub struct Sell;
@@ -22,7 +23,7 @@ impl SideSpecificContext for Buy {
 
     #[inline(always)]
     fn add_to_book(book: &mut OrderBook, order: Order) {
-        book.add_bid(order);
+        book.add_bid(&order);
     }
 }
 
@@ -39,6 +40,6 @@ impl SideSpecificContext for Sell {
 
     #[inline(always)]
     fn add_to_book(book: &mut OrderBook, order: Order) {
-        book.add_ask(order);
+        book.add_ask(&order);
     }
 }
