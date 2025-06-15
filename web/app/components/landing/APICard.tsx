@@ -1,6 +1,8 @@
 import React, { useState } from "react"
 import { ReactNode } from "react";
 import SVGCard from "./SVGCard" // Assuming SVGCard is in the same directory
+import { ArrowUpRight } from "lucide-react";
+import { DOCS_URL } from "~/lib/config";
 
 interface CardProps {
   width?: string;
@@ -238,7 +240,7 @@ export default function APICard() {
         
         <div className={`text-left p-8`}>
           <h4 className="text-white font-medium text-xl mb-2">A foundation to build upon</h4>
-          <p className="text-gray-400">Create your own client mods with our FIX, REST, & WebSocket APIs.</p>
+          <p className="text-gray-400">Create your own client with our FIX, REST, & WebSocket APIs.</p>
         </div>
       </div>
 

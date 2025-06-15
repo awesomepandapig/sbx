@@ -10,7 +10,7 @@ const initialData = [
     bid: 7892892,
     ask: 7892890,
     direction: "down",
-    icon: "https://wiki.hypixel.net/images/7/72/SkyBlock_items_jasper_crystal.png",
+    icon: "/Jasper_Crystal.png",
   },
   {
     symbol: "FRY",
@@ -24,21 +24,21 @@ const initialData = [
     bid: 15273182,
     ask: 15273181,
     direction: "up",
-    icon: "https://wiki.hypixel.net/images/7/75/SkyBlock_pets_golden_dragon.png",
+    icon: "/Golden_Dragon_Egg.png",
   },
   {
     symbol: "USD",
     bid: 105406,
     ask: 105405,
     direction: "neutral",
-    icon: "https://wiki.hypixel.net/images/7/72/SkyBlock_items_jasper_crystal.png",
+    icon: "/Jasper_Crystal.png",
   },
   {
     symbol: "GBP",
     bid: 1.33555,
     ask: 1.3357,
     direction: "down",
-    icon: "https://wiki.hypixel.net/images/7/72/SkyBlock_items_jasper_crystal.png",
+    icon: "/Jasper_Crystal.png",
   },
 ];
 
@@ -144,7 +144,7 @@ const TickerRow = React.memo(function TickerRow({
             <img
               src={item.icon || "/placeholder.svg"}
               alt={item.symbol}
-              className="w-6 h-6 object-contain"
+              className="w-6 h-6 object-contain scale-150"
             />
           </div>
           <span className="text-base tracking-wide">{item.symbol}</span>

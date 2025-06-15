@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "me",
+    "sbe",
+    "ws",
+    "tr",
+]
+
+resolver = "3"
+
+[workspace.dependencies]
+sbe = { path = "sbe" }
+
+[workspace.package]
+edition = "2024"

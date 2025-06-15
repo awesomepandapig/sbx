@@ -33,16 +33,13 @@ export default function AutoScrollingCarousel() {
         <div className="splide__track">
           <ul className="splide__list">
             <li className="splide__slide">
-              <CardImage
-                src="https://wiki.hypixel.net/images/1/18/SkyBlock_items_divan_pendant.png"
-                alt="Divan Pendant"
-              />
-            </li>
-            <li className="splide__slide">
-              <CardImage
-                src="https://wiki.hypixel.net/images/7/72/SkyBlock_items_jasper_crystal.png"
-                alt="Jasper Crystal"
-              />
+              <div className="w-20 h-20 bg-[rgba(255,255,255,0.06)] border border-[rgba(75,75,75,.7)] rounded-xl flex items-center justify-center p-4">
+                <img
+                  className="scale-150"
+                  src="/Jasper_Crystal.png"
+                  alt="Jasper Crystal"
+                />
+              </div>
             </li>
             <li className="splide__slide">
               <div className="w-20 h-20 bg-[rgba(255,255,255,0.06)] border border-[rgba(75,75,75,.7)] rounded-xl flex items-center justify-center p-4">
@@ -54,10 +51,13 @@ export default function AutoScrollingCarousel() {
               </div>
             </li>
             <li className="splide__slide">
-              <CardImage
-                src="https://wiki.hypixel.net/images/7/75/SkyBlock_pets_golden_dragon.png"
-                alt="Golden Dragon"
-              />
+              <div className="w-20 h-20 bg-[rgba(255,255,255,0.06)] border border-[rgba(75,75,75,.7)] rounded-xl flex items-center justify-center p-4">
+                <img
+                  className="scale-150"
+                  src="/Golden_Dragon_Egg.png"
+                  alt="Golden Dragon Egg"
+                />
+              </div>
             </li>
           </ul>
         </div>

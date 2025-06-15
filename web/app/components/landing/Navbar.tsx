@@ -7,7 +7,7 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-10 bg-[rgba(20,20,20,0.5)] backdrop-blur-lg">
       <div className="max-w-7xl mx-auto px-4 w-full flex justify-between items-center h-16">
         <div className="flex items-center gap-4">
-          <div className="bg-[#333333] rounded-full p-2">
+          {/* <div className="bg-[#333333] rounded-full">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <svg
                 viewBox="0 0 24 24"
@@ -21,7 +21,7 @@ export default function Navbar() {
                 />
               </svg>
             </div>
-          </div>
+          </div> */}
           <nav className="hidden sm:flex items-center gap-2">
             <button className="bg-[#e9e9e9] text-black px-6 py-2 rounded-full text-sm font-medium">
               HOME

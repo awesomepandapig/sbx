@@ -1,0 +1,10 @@
+[package]
+name = "sbe"
+version = "0.1.0"
+authors = ["sbetool"]
+description = "Matching Engine Protocol"
+edition = "2021"
+
+[lib]
+name = "sbe"
+path = "src/lib.rs"
