@@ -2,8 +2,7 @@ use crate::types::CancelRequest;
 use crate::types::Order;
 
 use std::debug_assert;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::{SystemTime};
 
 use aeron_rs::concurrent::logbuffer::buffer_claim::BufferClaim;
 use aeron_rs::concurrent::strategies::BusySpinIdleStrategy;
@@ -22,7 +21,7 @@ use sbe::ord_status_enum::OrdStatusEnum;
 use sbe::ord_type_enum::OrdTypeEnum;
 use sbe::order_cancel_reject_codec::OrderCancelRejectEncoder;
 
-use tracing::{error, debug, warn};
+use tracing::{debug, error, warn};
 
 const MAX_MESSAGE_SIZE: usize = SBE_BLOCK_LENGTH as usize + ENCODED_LENGTH;
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
@@ -138,13 +137,13 @@ impl ExecutionReport {
 }
 
 pub struct Publisher {
-    publication: Arc<Mutex<ExclusivePublication>>,
+    publication: ExclusivePublication,
     buffer_claim: BufferClaim,
     offer_idle_strategy: BusySpinIdleStrategy,
 }
 
 impl Publisher {
-    pub fn new(publication: Arc<Mutex<ExclusivePublication>>) -> Self {
+    pub fn new(publication: ExclusivePublication) -> Self {
         Self {
             publication,
             buffer_claim: BufferClaim::default(),
@@ -181,18 +180,12 @@ impl Publisher {
         self.offer_idle_strategy.reset(); // TODO: BACKPRESSURE STRATEGY
 
         loop {
-            let Ok(mut publication) = self.publication.lock() else {
-                error!("Mutex poisoned while trying to claim buffer — aborting.");
-                std::process::exit(1)
-            };
-
-            let result = publication.try_claim(MAX_MESSAGE_SIZE_I32, &mut self.buffer_claim);
+            let result = self.publication.try_claim(MAX_MESSAGE_SIZE_I32, &mut self.buffer_claim);
 
             match result {
                 Ok(_) => break,
                 Err(AeronError::BackPressured) => {
-                    // self.offer_idle_strategy.idle(); // TODO: BACKPRESSURE STRATEGY
-                    std::thread::sleep(Duration::from_micros(40));
+                    self.offer_idle_strategy.idle();
                 }
                 Err(err) => {
                     Self::handle_publication_error(err, exec_id);
@@ -257,11 +250,7 @@ impl Publisher {
                 "MAX_MESSAGE_SIZE too large for i32"
             );
 
-            let result = self
-                .publication
-                .lock()
-                .unwrap() // TODO: NO UNWRAP
-                .try_claim(MAX_MESSAGE_SIZE as i32, &mut self.buffer_claim);
+            let result = self.publication.try_claim(MAX_MESSAGE_SIZE_I32, &mut self.buffer_claim);
 
             match result {
                 Ok(_) => break,
@@ -269,11 +258,17 @@ impl Publisher {
                     self.offer_idle_strategy.idle();
                 }
                 Err(AeronError::NotConnected) => {
-                    warn!("Publication not connected for exec_id {}, retrying...", exec_id);
+                    warn!(
+                        "Publication not connected for exec_id {}, retrying...",
+                        exec_id
+                    );
                     std::thread::yield_now();
                 }
                 Err(AeronError::AdminAction) => {
-                    debug!("Admin action in progress for exec_id {}, retrying...", exec_id);
+                    debug!(
+                        "Admin action in progress for exec_id {}, retrying...",
+                        exec_id
+                    );
                     self.offer_idle_strategy.idle();
                 }
                 Err(err) => {

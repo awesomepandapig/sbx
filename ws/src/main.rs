@@ -1,97 +1,123 @@
-mod messages;
-mod orderbook;
-mod processors;
-mod transport;
+use futures_util::{SinkExt, StreamExt};
 
-use messages::decode_execution_report;
-use processors::execution::process_execution_report;
+use std::net::SocketAddr;
+use std::process;
+use std::time::SystemTime;
 
-use orderbook::OrderBook;
-use transport::aeron::{build_context, create_subscription, get_aeron_dir};
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::{
+    accept_async,
+    tungstenite::{Error, Message, Result, Utf8Bytes},
+};
+use tokio::time::{interval, Duration, Instant};
 
-use std::option::Option::None;
-use std::slice;
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
-use aeron_rs::aeron::Aeron;
-use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
-use aeron_rs::concurrent::logbuffer::header::Header;
-use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
-use aeron_rs::concurrent::strategies::BusySpinIdleStrategy;
-use aeron_rs::concurrent::strategies::Strategy;
-use aeron_rs::fragment_assembler::FragmentAssembler;
-use aeron_rs::utils::types::Index;
-
-use sbe::ReadBuf;
-use sbe::message_header_codec::MessageHeaderDecoder;
+use serde_json::{Value, json};
 
 use tracing::Level;
-use tracing::{error, info};
+use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;
 
-fn main() {
-    // Initialize tracing
-    let _subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
+use tracing::{error, info};
+
+async fn accept_connection(peer: SocketAddr, stream: TcpStream) {
+    if let Err(e) = handle_connection(peer, stream).await {
+        match e {
+            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8(_) => (),
+            err => error!("Error processing connection: {}", err),
+        }
+    }
+}
+
+pub fn format_timestamp_ns(timestamp_ns: u64) -> String {
+    let secs = (timestamp_ns / 1_000_000_000) as i64;
+    let nanos = (timestamp_ns % 1_000_000_000) as u32;
+
+    let naive_dt = NaiveDateTime::from_timestamp_opt(secs, nanos)
+        .unwrap_or_else(|| NaiveDateTime::from_timestamp_opt(0, 0).unwrap()); // Default to epoch if out of range
+
+    let datetime: DateTime<Utc> = Utc.from_utc_datetime(&naive_dt);
+    datetime.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
+}
+
+async fn handle_connection(peer: SocketAddr, stream: TcpStream) -> Result<()> {
+    let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
+
+    info!("New WebSocket connection: {}", peer);
+
+    // Connect to the NATS server
+    // TODO: GET NATS_SERVER FROM ENV VARIABLE
+    info!("Connecting to NATS server at localhost");
+    let client = async_nats::connect("localhost")
+        .await
+        .expect("nats connection failed"); // TODO: Replace expect with explicit handle and trace
+
+    // TODO: GET NATS_CHANNEL FROM ENV VARIABLE
+    let mut subscriber = client
+        .subscribe("foo")
+        .await
+        .expect("Failed to connect to NATS");
+
+    let mut sequence_num = 0;
+    let mut buffer: Vec<Value> = Vec::new();
+    let mut ticker = interval(Duration::from_millis(250));
+
+    while let Some(message) = subscriber.next().await {
+        let inner_json: Value =
+            serde_json::from_slice(&message.payload).expect("Invalid JSON in NATS message payload"); // TODO: HANDLE ERROR
+
+        let timestamp_ns = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap() // TODO: REPLACE UNWRAP WITH ERROR HANDLE
+            .as_nanos() as u64;
+
+        let update_json = json!({
+            "channel": "l2_data",
+            "client_id": "", // TODO:
+            "timestamp": format_timestamp_ns(timestamp_ns),
+            "sequence_num": sequence_num,
+            "events": [{
+                "type": "update",
+                "product_id": "JSP",
+                "updates": [inner_json]
+            }]
+        });
+
+        sequence_num += 1;
+
+        let update_str = update_json.to_string();
+        let ws_msg = Message::Text(Utf8Bytes::from(update_str));
+        ws_stream
+            .send(ws_msg)
+            .await
+            .expect("Failed to send message");
+    }
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
         .finish();
 
-    // Initialize Aeron
-    let aeron_dir = get_aeron_dir();
-    let context = build_context(&aeron_dir);
-    let mut aeron = match Aeron::new(context) {
-        Ok(instance) => instance,
-        Err(e) => {
-            error!("Aeron: Failed to create instance: {:?}", e);
-            return;
-        }
-    };
-    let subscription = create_subscription(
-        &mut aeron,
-        // "aeron:udp?endpoint=224.1.1.1:40456|interface=localhost",
-        "aeron:ipc",
-        1002,
-    );
-    let sub_status = subscription.lock().unwrap().channel_status();
-    info!("Aeron: Subscription {}", channel_status_to_str(sub_status));
+    set_global_default(subscriber).unwrap_or_else(|err| {
+        error!(target: "setup", kind="tracing_init_failed", error=?err, "Failed to create Tracing subscriber");
+        process::exit(1);
+    });
 
-    // Initialize structs
-    let mut book = OrderBook::new();
-    let poll_idle_strategy = BusySpinIdleStrategy::default();
+    let addr = "127.0.0.1:8080";
+    let listener = TcpListener::bind(&addr).await.expect("Can't listen");
+    info!("Listening on: {}", addr);
 
-    // TODO: Move out into handler function
-    // Initialize message handler
-    let mut order_message_handler =
-        move |buffer: &AtomicBuffer, offset: Index, length: Index, _header: &Header| {
-            // SAFETY: This creates a slice from the Aeron buffer for zero-copy message processing.
-            // The buffer is guaranteed to be valid for the specified offset and length by Aeron.
-            // The slice lifetime is bounded by this function scope, ensuring memory safety.
-            let slice_msg = unsafe {
-                slice::from_raw_parts_mut(
-                    buffer.buffer().offset(offset.try_into().expect("")), // TODO: NO EXPECT
-                    length.try_into().expect(""),                         // TODO: NO EXPECT
-                )
-            };
+    while let Ok((stream, _)) = listener.accept().await {
+        let peer = stream
+            .peer_addr()
+            .expect("connected streams should have a peer address");
+        info!("Peer address: {}", peer);
 
-            let read_buf = ReadBuf::new(slice_msg);
-            let header_decoder: MessageHeaderDecoder<ReadBuf<'_>> =
-                MessageHeaderDecoder::default().wrap(read_buf, 0);
-
-            match header_decoder.template_id() {
-                3 => {
-                    let report = decode_execution_report(header_decoder);
-
-                    process_execution_report(&mut book, &report);
-                }
-                template_id => {
-                    panic!("incorrect template_id: {}", template_id)
-                }
-            }
-        };
-
-    // Listen for new Aeron messages
-    let mut fragment_assembler = FragmentAssembler::new(&mut order_message_handler, None);
-    let mut fragment_handler = fragment_assembler.handler();
-    loop {
-        let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, 10);
-        poll_idle_strategy.idle_opt(fragments_read);
+        tokio::spawn(accept_connection(peer, stream));
     }
 }

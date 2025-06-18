@@ -4,7 +4,7 @@ use sbe::{
     ord_status_enum::OrdStatusEnum, side_enum::SideEnum,
 };
 
-pub type UuidType = [u8; 16];
+pub type UuidType = [u64; 2];
 pub type SymbolType = [u8; 6];
 
 #[derive(Debug, Clone)]

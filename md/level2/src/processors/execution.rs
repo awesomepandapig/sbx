@@ -1,6 +1,6 @@
 use crate::messages::ExecutionReportMessage;
 use crate::orderbook::OrderBook;
-use crate::processors::level2::emit_level2_update;
+use crate::processors::level2::format_l2_update_json;
 
 use std::string::ToString;
 
@@ -9,7 +9,13 @@ use sbe::side_enum::SideEnum;
 
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 
-pub fn process_execution_report(book: &mut OrderBook, report: &ExecutionReportMessage) {
+use tracing::warn;
+
+pub fn process_execution_report(
+    book: &mut OrderBook,
+    report: &ExecutionReportMessage,
+) -> Option<String> {
+    let mut update_to_send: Option<String> = None;
     match report.exec_type {
         ExecTypeEnum::New => {
             assert_eq!(
@@ -23,13 +29,16 @@ pub fn process_execution_report(book: &mut OrderBook, report: &ExecutionReportMe
 
             if report.price != i64::MIN {
                 let new_quantity = book.add_order(&report);
-                emit_level2_update(
-                    report.side.to_string().to_lowercase(),
-                    format_nanosecond_timestamp(&report.transact_time),
-                    format_decimal_with_exponent_neg8(&report.price),
-                    format_decimal_with_exponent_neg8(&new_quantity),
-                    format_symbol(&report.symbol),
-                );
+                update_to_send = Some(
+                    format_l2_update_json(
+                        report.side.to_string().to_lowercase(),
+                        format_nanosecond_timestamp(&report.transact_time),
+                        format_decimal_with_exponent_neg8(&report.price),
+                        format_decimal_with_exponent_neg8(&new_quantity),
+                        format_symbol(&report.symbol),
+                    )
+                    .expect("Failed to serialize L2Update"),
+                ); // TODO: NO EXPECTS
             }
         }
         ExecTypeEnum::Trade => {
@@ -48,26 +57,32 @@ pub fn process_execution_report(book: &mut OrderBook, report: &ExecutionReportMe
 
                 let new_quantity = book.fill_order(&report);
 
-                emit_level2_update(
-                    report.side.to_string().to_lowercase(),
-                    format_nanosecond_timestamp(&report.transact_time),
-                    format_decimal_with_exponent_neg8(&report.price),
-                    format_decimal_with_exponent_neg8(&new_quantity),
-                    format_symbol(&report.symbol),
-                );
+                update_to_send = Some(
+                    format_l2_update_json(
+                        report.side.to_string().to_lowercase(),
+                        format_nanosecond_timestamp(&report.transact_time),
+                        format_decimal_with_exponent_neg8(&report.price),
+                        format_decimal_with_exponent_neg8(&new_quantity),
+                        format_symbol(&report.symbol),
+                    )
+                    .expect("Failed to serialize L2Update"),
+                ); // TODO: NO EXPECTS
             }
         }
         ExecTypeEnum::Canceled => {
             if report.price != i64::MIN {
                 let new_quantity = book.remove_order(&report);
 
-                emit_level2_update(
-                    report.side.to_string().to_lowercase(),
-                    format_nanosecond_timestamp(&report.transact_time),
-                    format_decimal_with_exponent_neg8(&report.price),
-                    format_decimal_with_exponent_neg8(&new_quantity),
-                    format_symbol(&report.symbol),
-                );
+                update_to_send = Some(
+                    format_l2_update_json(
+                        report.side.to_string().to_lowercase(),
+                        format_nanosecond_timestamp(&report.transact_time),
+                        format_decimal_with_exponent_neg8(&report.price),
+                        format_decimal_with_exponent_neg8(&new_quantity),
+                        format_symbol(&report.symbol),
+                    )
+                    .expect("Failed to serialize L2Update"),
+                ); // TODO: NO EXPECTS
             }
         }
         ExecTypeEnum::Rejected => {
@@ -79,11 +94,13 @@ pub fn process_execution_report(book: &mut OrderBook, report: &ExecutionReportMe
                 book.last_seen_id + 1
             );
             book.last_seen_id += 1;
+            warn!("Rejected order: {}", report.order_id);
         }
         _ => {
             // Handle other execution types or ignore
         }
     }
+    update_to_send
 }
 
 fn format_decimal_with_exponent_neg8(mantissa: &i64) -> String {

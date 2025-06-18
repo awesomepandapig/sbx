@@ -37,10 +37,17 @@ pub fn format_timestamp_ns(timestamp_ns: u64) -> String {
     datetime.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
 }
 
+fn u64s_to_uuid(uuid: [u64; 2]) -> Uuid {
+    let mut bytes = [0u8; 16];
+    bytes[0..8].copy_from_slice(&uuid[0].to_be_bytes());
+    bytes[8..16].copy_from_slice(&uuid[1].to_be_bytes());
+    Uuid::from_bytes(bytes)
+}
+
 impl Order {
     pub fn from_buffer(
-        cl_ord_id: [u8; 16],
-        symbol: [u8; 6],
+        cl_ord_id: UuidType,
+        symbol: SymbolType,
         side: SideEnum,
         ord_type: OrdTypeEnum,
         timestamp_ns: u64,
@@ -48,7 +55,7 @@ impl Order {
         price_mantissa: i64,
     ) -> Self {
         Order {
-            id: Uuid::from_bytes(cl_ord_id).to_string(),
+            id: u64s_to_uuid(cl_ord_id).to_string(),
             product_id: String::from_utf8_lossy(&symbol)
                 .trim_end_matches('\0')
                 .to_string(),
@@ -77,10 +84,13 @@ impl Order {
     }
 }
 
+pub type UuidType = [u64; 2];
+pub type SymbolType = [u8; 6];
+
 pub fn create_order_buffer(
-    cl_ord_id: &[u8; 16],
-    account: &[u8; 16],
-    symbol: &[u8; 6],
+    cl_ord_id: &UuidType,
+    account: &UuidType,
+    symbol: &SymbolType,
     side: SideEnum,
     ord_type: OrdTypeEnum,
     timestamp_ns: u64,

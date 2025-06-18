@@ -1,7 +1,10 @@
 [workspace]
 members = [
-    "me",
     "sbe",
+    "api",
+    "me",
+    "md/level2",
+    "md/ticker",
     "ws",
     "tr",
 ]

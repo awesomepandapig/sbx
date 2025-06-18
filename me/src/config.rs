@@ -2,8 +2,8 @@ use std::env;
 use std::ffi::CString;
 use std::process;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 use aeron_rs::aeron::Aeron;
 use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;

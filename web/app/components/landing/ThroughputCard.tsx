@@ -54,7 +54,7 @@ export default function ThroughputCard() {
         // Move existing orders up and add new one at bottom
         const updatedOrders = prev
           .map((order) => ({ ...order, position: order.position + 1 }))
-          .filter((order) => order.position < 24) // Keep only 24 orders
+          .filter((order) => order.position < 26) // Keep only 24 orders
 
         return [newOrder, ...updatedOrders]
       })

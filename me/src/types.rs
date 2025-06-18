@@ -20,7 +20,7 @@ pub struct Order {
     // Cold fields (rarely accessed during matching) - subsequent cache lines
     pub client_order_id: UuidType, // 16 bytes - Client Order ID
     pub account: UuidType,         // 16 bytes - Account ID
-    // pub transact_time: u64,        // 8 bytes - Time of transaction from client
+    pub transact_time: u64,        // 8 bytes - Time of transaction from client
     pub symbol: SymbolType, // 6 bytes - Instrument symbol
 }
 

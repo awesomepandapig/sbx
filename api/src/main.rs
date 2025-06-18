@@ -1,5 +1,5 @@
 mod aeron_handler;
-use aeron_handler::{build_context, create_publication, get_aeron_dir};
+use aeron_handler::{build_context, create_publication, get_aeron_dir, unwrap_publication};
 
 use aeron_rs::publication::Publication;
 
@@ -22,7 +22,7 @@ use axum::{Router, routing::get};
 use log::{error, info};
 
 pub struct AppState {
-    publication: Arc<Mutex<Publication>>,
+    publication: Publication,
     buffer: AtomicBuffer,
 }
 
@@ -47,8 +47,10 @@ async fn main() {
         }
     };
 
-    let publication = create_publication(&mut aeron, "aeron:udp?endpoint=localhost:40123", 1001);
-    let pub_status = publication.lock().unwrap().channel_status();
+    let wrapped_publication = create_publication(&mut aeron, "aeron:udp?endpoint=localhost:40123", 1001);
+    let publication = unwrap_publication(wrapped_publication);
+
+    let pub_status = publication.channel_status();
     info!("Aeron: Publication {}", channel_status_to_str(pub_status));
 
     let aligned_buffer = AlignedBuffer::with_capacity(72);

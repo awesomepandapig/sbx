@@ -5,7 +5,7 @@ use sbe::ord_status_enum::OrdStatusEnum;
 use std::time::Instant;
 
 use aeron_rs::aeron::Aeron;
-use aeron_rs::concurrent::atomic_buffer::{AtomicBuffer};
+use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::status::status_indicator_reader::channel_status_to_str;
 use sbe::exec_type_enum::ExecTypeEnum;
 use sbe::side_enum::SideEnum;
@@ -25,9 +25,7 @@ const DECIMAL_NULL_VAL: i64 = i64::MIN;
 
 use uuid::Uuid;
 
-use questdb::{
-    ingress::{Buffer, Sender, TimestampNanos},
-};
+use questdb::ingress::{Buffer, Sender, TimestampNanos};
 
 pub fn read_message(
     buffer: &AtomicBuffer,
@@ -75,7 +73,7 @@ fn write_to_db(
 
     // let account_bytes = report.account();
     // let account = Uuid::from_bytes(account_bytes).to_string();
-    
+
     // let cl_ord_id_bytes = report.cl_ord_id();
     // let cl_ord_id = Uuid::from_bytes(cl_ord_id_bytes).to_string();
 
@@ -103,7 +101,7 @@ fn write_to_db(
         OrdStatusEnum::Canceled => "canceled",
         _ => return Ok(()),
     };
-    
+
     let side_bool = match report.side() {
         SideEnum::Buy => true,
         SideEnum::Sell => false,
@@ -137,7 +135,7 @@ fn write_to_db(
 
     builder.at(timestamp)?;
 
-    qdb_sender.flush( qdb_buffer)?;
+    qdb_sender.flush(qdb_buffer)?;
     Ok(())
 }
 
@@ -161,7 +159,11 @@ fn main() -> questdb::Result<()> {
         }
     };
 
-    let subscription = create_subscription(&mut aeron, "aeron:udp?endpoint=224.1.1.1:40456|interface=localhost", 1002);
+    let subscription = create_subscription(
+        &mut aeron,
+        "aeron:udp?endpoint=224.1.1.1:40456|interface=localhost",
+        1002,
+    );
     let sub_status = subscription.lock().unwrap().channel_status();
     info!("Aeron: Subscription {}", channel_status_to_str(sub_status));
 
@@ -198,6 +200,5 @@ fn main() -> questdb::Result<()> {
             },
             1024,
         );
-        
     }
 }

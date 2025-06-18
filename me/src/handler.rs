@@ -147,7 +147,7 @@ impl Handler {
 
             symbol: decoder.symbol(),
             side: decoder.side(),
-            // transact_time: decoder.transact_time_decoder().time(),
+            transact_time: decoder.transact_time_decoder().time(),
             quantity,
             r#type: decoder.ord_type(),
             price: decoder.price_decoder().mantissa(),

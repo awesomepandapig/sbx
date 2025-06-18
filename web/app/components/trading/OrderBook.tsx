@@ -106,9 +106,14 @@ export default function OrderBook({ symbol }: OrderBookProps) {
       );
     };
 
+    let msg_count = 0;
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data as string);
       if (!data || data.channel !== "l2_data" || !data.events) return;
+
+      console.log(msg_count);
+      msg_count++;
 
       let hasUpdates = false;
 

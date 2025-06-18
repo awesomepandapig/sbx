@@ -1,6 +1,6 @@
 use super::AppState;
 use super::errors::AppError;
-use super::order::{Order, create_order_buffer};
+use super::order::{Order, SymbolType, UuidType, create_order_buffer};
 
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -26,19 +26,25 @@ pub struct CreateOrder {
 
 #[derive(Debug)]
 struct ParsedOrderInput {
-    cl_ord_id: [u8; 16],
-    account: [u8; 16],
-    symbol: [u8; 6],
+    cl_ord_id: UuidType,
+    account: UuidType,
+    symbol: SymbolType,
     side: SideEnum,
     ord_type: OrdTypeEnum,
-    timestamp_ns: u64,
     qty_mantissa: i64,
     price_mantissa: i64,
 }
 
+fn uuid_to_u64s(uuid: Uuid) -> [u64; 2] {
+    let bytes = uuid.into_bytes(); // [u8; 16]
+    let high = u64::from_be_bytes(bytes[0..8].try_into().unwrap());
+    let low = u64::from_be_bytes(bytes[8..16].try_into().unwrap());
+    [high, low]
+}
+
 fn parse_and_validate_order_payload(payload: &CreateOrder) -> Result<ParsedOrderInput, AppError> {
-    let cl_ord_id = Uuid::new_v4().into_bytes(); // Uuid::into_bytes() returns [u8; 16] directly
-    let account = Uuid::new_v4().into_bytes(); // Hardcoded for now, ensure it's [u8; 16]
+    let cl_ord_id = uuid_to_u64s(Uuid::new_v4()); // Uuid::into_bytes() returns [u8; 16] directly
+    let account = uuid_to_u64s(Uuid::new_v4()); // Hardcoded for now, ensure it's [u8; 16]
 
     // --- Symbol Validation ---
     // TODO: VALIDATE SYMBOL (enhance this as needed)
@@ -109,18 +115,12 @@ fn parse_and_validate_order_payload(payload: &CreateOrder) -> Result<ParsedOrder
         None => i64::MIN, // Sentinel for market orders or when price is not applicable
     };
 
-    let timestamp_ns = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|e| AppError::InternalServerError(format!("Failed to get system time: {}", e)))?
-        .as_nanos() as u64;
-
     Ok(ParsedOrderInput {
         cl_ord_id,
         account,
         symbol,
         side,
         ord_type,
-        timestamp_ns,
         qty_mantissa,
         price_mantissa,
     })
@@ -142,13 +142,18 @@ pub async fn post_order(
 
     let parsed_input = parse_and_validate_order_payload(&payload)?;
 
+    let mut timestamp_ns = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|e| AppError::InternalServerError(format!("Failed to get system time: {}", e)))?
+        .as_nanos() as u64;
+
     let order_buffer = create_order_buffer(
         &parsed_input.cl_ord_id,
         &parsed_input.account,
         &parsed_input.symbol,
         parsed_input.side,
         parsed_input.ord_type,
-        parsed_input.timestamp_ns,
+        timestamp_ns,
         parsed_input.qty_mantissa,
         parsed_input.price_mantissa,
     );
@@ -157,12 +162,15 @@ pub async fn post_order(
 
     let result = state
         .publication
-        .lock()
-        .unwrap()
         .offer_part(state.buffer, 0, MESSAGE_SIZE as i32);
 
     match result {
-        Ok(_code) => {}
+        Ok(_code) => {
+            timestamp_ns = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map_err(|e| AppError::InternalServerError(format!("Failed to get system time: {}", e)))?
+                .as_nanos() as u64;
+        }
         Err(err) => println!("Offer with error: {}", err),
     }
 
@@ -171,7 +179,7 @@ pub async fn post_order(
         parsed_input.symbol,
         parsed_input.side,
         parsed_input.ord_type,
-        parsed_input.timestamp_ns,
+        timestamp_ns,
         parsed_input.qty_mantissa,
         parsed_input.price_mantissa,
     );

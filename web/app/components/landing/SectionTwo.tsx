@@ -1,7 +1,7 @@
 import Card, { CardImage } from "./Card";
 import SVGCard from "./SVGCard";
 import APICard from "./APICard";
-import ThroghputCard from "./ThroughputCard";
+import ThroughputCard from "./ThroughputCard";
 
 export default function SectionTwo() {
   return (
@@ -34,7 +34,7 @@ export default function SectionTwo() {
           </a>
         </Card>
 
-        <ThroghputCard/>
+        <ThroughputCard/>
         
 
         
